@@ -1,14 +1,15 @@
--- AlippHUB - Full Custom WindUI (Mirip RullzsyHUB)
--- Load Example.lua dulu biar UI base muncul kosong, trus kita isi full
+-- AlippHUB - Custom WindUI Full (NO DEFAULT EXAMPLE!)
+-- Load CORE library only (bukan example)
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/refs/heads/main/Example.lua"))()
-
--- === CONFIG ALIPPHUB ===
+-- === CONFIG ===
 local Config = {
-    Name = "AlippHUB",
-    Discord = "https://discord.gg/alipphub",  -- Ganti link Discord kamu
-    ValidKeys = {"alippvip123", "AlippHub2025", "freekey2025"}  -- Ganti key kamu
+    HubName = "AlippHUB",
+    Discord = "https://discord.gg/alipphub",  -- Ganti link kamu
+    ValidKeys = {"alippvip123", "Alipp2025", "freealipp"}  -- Ganti key kamu
 }
+
+local unlocked = false
 
 local function isValidKey(key)
     for _, v in pairs(Config.ValidKeys) do
@@ -17,122 +18,134 @@ local function isValidKey(key)
     return false
 end
 
--- Clear default tabs biar kosong dulu
-WindUI.Tabs = {}  -- Kosongin semua tab default
+-- === BUAT WINDOW CUSTOM ===
+local Window = WindUI:CreateWindow({
+    Title = Config.HubName .. " | Loading...",
+    SubTitle = "Auto Walk VIP",
+    Theme = "Crimson"  -- Mirip screenshot (merah gelap)
+})
 
--- === KEY SYSTEM ===
-local unlocked = false
+-- Notif selamat datang
+WindUI:Notify("AlippHUB", "Masukkan key untuk unlock semua fitur VIP!", 10)
 
-local AuthTab = WindUI:AddTab("Authentication")
-local AuthSec = AuthTab:AddSection("Key System")
+-- === AUTHENTICATION (MUNcul DULU) ===
+local AuthTab = Window:AddTab({ Title = "Authentication", Icon = "lock" })
+
+local AuthSec = AuthTab:AddSection({ Title = "Key System" })
 
 local keyInput = ""
-AuthSec:AddInput("Input Key", function(text)
-    keyInput = text
-end)
+AuthSec:AddInput({
+    Title = "Input Key",
+    Placeholder = "Masukkan key di sini...",
+    Callback = function(text) keyInput = text end
+})
 
-AuthSec:AddButton("Verify Key", function()
-    if keyInput == "" then
-        WindUI:Notify("AlippHUB", "Masukkan key dulu dong!", 4)
-        return
+AuthSec:AddButton({
+    Title = "Verify Key",
+    Callback = function()
+        if keyInput == "" then
+            WindUI:Notify("Warning", "Masukkan key dulu!", 4)
+            return
+        end
+        if isValidKey(keyInput) then
+            unlocked = true
+            WindUI:Notify("Success!", "Key valid! Fitur VIP terbuka 🔥", 7)
+            Window:SetTitle(Config.HubName .. " | Auto Walk")
+            CreateAllFeatures()  -- Buat semua tab & fitur
+        else
+            WindUI:Notify("Error", "Key invalid! Beli di Discord.", 6)
+        end
     end
-    if isValidKey(keyInput) then
-        unlocked = true
-        WindUI:Notify("AlippHUB", "Key valid! Semua fitur unlocked 🔥", 6)
-        -- Unhide & buat semua tab
-        CreateAllTabs()
-    else
-        WindUI:Notify("AlippHUB", "Key salah bro, coba lagi atau beli baru!", 5)
-    end
-end)
+})
 
-AuthSec:AddLabel("Butuh key? Join Discord & hubungi admin")
-AuthSec:AddLabel(Config.Discord)
+AuthSec:AddLabel({ Title = "Belum punya key?" })
+AuthSec:AddLabel({ Title = Config.Discord })
 
--- === FUNGSI BUAT SEMUA TAB (DIPANGGIL SETELAH KEY VALID) ===
-function CreateAllTabs()
-    -- Auto Walk Tab (utama seperti screenshot)
-    local AutoTab = WindUI:AddTab("Auto Walk")
+-- === BUAT SEMUA TAB & FITUR SETELAH KEY VALID ===
+function CreateAllFeatures()
+    -- Auto Walk Tab (fokus utama)
+    local AutoTab = Window:AddTab({ Title = "Auto Walk", Icon = "walk" })
 
-    -- FPS Booster
-    local fpsSec = AutoTab:AddSection("FPS Booster")
-    fpsSec:AddToggle("Activate FPS Booster", false, function(state)
-        settings().Rendering.QualityLevel = state and 1 or 10
-    end)
-
-    -- Nametag Menu
-    local nameSec = AutoTab:AddSection("Nametag Menu")
-    nameSec:AddToggle("Hide Nametag", false, function(state)
-        -- Logic hide nametag semua player (tambahkan sendiri kalau mau)
-    end)
-
-    -- Walk Speed Menu
-    local walkSec = AutoTab:AddSection("Walk Speed Menu")
-    walkSec:AddToggle("Enable Walk Speed", false, function(state)
-        if game.Players.LocalPlayer.Character then
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = state and 100 or 16
+    local fpsSec = AutoTab:AddSection({ Title = "FPS Booster" })
+    fpsSec:AddToggle({
+        Title = "Activate FPS Booster",
+        Default = false,
+        Callback = function(state)
+            settings().Rendering.QualityLevel = state and 1 or 10
         end
-    end)
-    walkSec:AddSlider("Set Walk Speed", 16, 300, 16, function(val)
-        if game.Players.LocalPlayer.Character then
-            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
+    })
+
+    local nameSec = AutoTab:AddSection({ Title = "Nametag Menu" })
+    nameSec:AddToggle({ Title = "Hide Nametag", Default = false })
+
+    local walkSec = AutoTab:AddSection({ Title = "Walk Speed Menu" })
+    walkSec:AddToggle({
+        Title = "Enable Walk Speed",
+        Default = false,
+        Callback = function(state)
+            local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = state and 100 or 16 end
         end
-    end)
-
-    -- Keybind & Setting Auto Walk
-    local keybindSec = AutoTab:AddSection("Keybind (PC)")
-    keybindSec:AddKeybind("Play/Stop Keybind", Enum.KeyCode.F, function() print("Auto Walk toggled") end)
-    keybindSec:AddKeybind("Flip/Rotate Keybind", Enum.KeyCode.R, function() print("Flip/Rotate") end)
-
-    local settingSec = AutoTab:AddSection("Setting")
-    settingSec:AddToggle("Enable Loop", false)
-    settingSec:AddToggle("Auto Respawn", false)
-    settingSec:AddToggle("Enable God Mode", false, function(state)
-        if state and game.Players.LocalPlayer.Character then
-            game.Players.LocalPlayer.Character.Humanoid.Health = math.huge
+    })
+    walkSec:AddSlider({
+        Title = "Set Walk Speed",
+        Min = 16, Max = 300, Default = 16,
+        Callback = function(val)
+            local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = val end
         end
-    end)
+    })
 
-    -- Credits Tab
-    local CredTab = WindUI:AddTab("Credits")
-    local credSec = CredTab:AddSection("Special Thanks")
-    credSec:AddLabel("UI Library: WindUI")
-    credSec:AddLabel("Script by: Alipp")
-    credSec:AddLabel("Community: AlippHUB")
+    local keySec = AutoTab:AddSection({ Title = "Keybind (PC)" })
+    keySec:AddKeybind({ Title = "Play/Stop Keybind", Default = Enum.KeyCode.F })
+    keySec:AddKeybind({ Title = "Flip/Rotate Keybind", Default = Enum.KeyCode.R })
 
-    -- Bypass Tab
-    local BypassTab = WindUI:AddTab("Bypass")
-    local bypassSec = BypassTab:AddSection("Bypass Features")
-    bypassSec:AddToggle("Bypass Admin Detection", false)
-    bypassSec:AddToggle("Bypass AFK", false)
-    bypassSec:AddButton("AUTO CLICKER | PC")
-    bypassSec:AddButton("AUTO CLICKER | ANDROID")
+    local setSec = AutoTab:AddSection({ Title = "Setting" })
+    setSec:AddToggle({ Title = "Enable Loop", Default = false })
+    setSec:AddToggle({ Title = "Auto Respawn", Default = false })
+    setSec:AddToggle({
+        Title = "Enable God Mode",
+        Default = false,
+        Callback = function(state)
+            local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum and state then hum.Health = math.huge end
+        end
+    })
 
-    -- Hide Menu Tab
-    local HideTab = WindUI:AddTab("Hide Menu")
-    local openSec = HideTab:AddSection("Open Menu (PC)")
-    openSec:AddLabel("Default key: P")
-    openSec:AddKeybind("Toggle Menu", Enum.KeyCode.P, function()
-        WindUI:Toggle()
-    end)
+    -- Credits
+    local CredTab = Window:AddTab({ Title = "Credits", Icon = "heart" })
+    CredTab:AddSection({ Title = "Special Thanks" }):AddLabel({ Title = "UI: WindUI\nDev: Alipp\nCommunity: AlippHUB" })
 
-    local themeSec = HideTab:AddSection("Themes UI")
-    themeSec:AddDropdown("Preset Themes", {"Crimson", "Dark", "White", "Purple", "Blue"}, "Crimson", function(choice)
-        WindUI:ChangeTheme(choice)
-    end)
+    -- Bypass
+    local BypassTab = Window:AddTab({ Title = "Bypass", Icon = "shield" })
+    local bypassSec = BypassTab:AddSection({ Title = "Bypass Features" })
+    bypassSec:AddToggle({ Title = "Bypass Admin Detection", Default = false })
+    bypassSec:AddToggle({ Title = "Bypass AFK", Default = false })
+    bypassSec:AddButton({ Title = "AUTO CLICKER | PC" })
+    bypassSec:AddButton({ Title = "AUTO CLICKER | ANDROID" })
 
-    -- Tab lain (kosongin dulu atau tambah fitur)
-    WindUI:AddTab("Account")
-    WindUI:AddTab("Copy Avatar")
-    WindUI:AddTab("Animation")
-    WindUI:AddTab("Skybox")
-    WindUI:AddTab("Player Menu")
-    WindUI:AddTab("Social Media")
-    WindUI:AddTab("Settings")
+    -- Hide Menu
+    local HideTab = Window:AddTab({ Title = "Hide Menu", Icon = "eye-off" })
+    HideTab:AddSection({ Title = "Open Menu (PC)" }):AddLabel({ Title = "Default: P" })
+    HideTab:AddSection({ Title = "Toggle Menu" }):AddKeybind({
+        Title = "Toggle UI",
+        Default = Enum.KeyCode.P,
+        Callback = function() Window:Minimize() end
+    })
+    local themeSec = HideTab:AddSection({ Title = "Themes UI" })
+    themeSec:AddDropdown({
+        Title = "Preset Themes",
+        Options = {"Crimson", "Dark", "White", "Purple", "Blue"},
+        Default = "Crimson",
+        Callback = function(choice) WindUI:ChangeTheme(choice) end
+    })
 
-    -- Update title
-    WindUI.Window:SetTitle(Config.Name .. " | Auto Walk")
+    -- Tab lain biar sidebar full
+    Window:AddTab({ Title = "Account", Icon = "user" })
+    Window:AddTab({ Title = "Copy Avatar", Icon = "copy" })
+    Window:AddTab({ Title = "Animation", Icon = "sparkles" })
+    Window:AddTab({ Title = "Skybox", Icon = "cloud" })
+    Window:AddTab({ Title = "Player Menu", Icon = "users" })
+    Window:AddTab({ Title = "Social Media", Icon = "share" })
+    Window:AddTab({ Title = "Settings", Icon = "cog" })
 end
-
--- Notif awal
-WindUI:Notify("AlippHUB", "Masukkan key valid untuk unlock semua fitur premium!", 10)
