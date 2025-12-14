@@ -1,6 +1,5 @@
--- AlippHUB | Auto Walk Script - FIXED Key System + No Loading Stuck
+-- AlippHUB | Auto Walk VIP - FULL FIXED (No Loading + Proper Key Hide/Unhide)
 -- Discord: dsc.gg/alipphub
--- Acrylic disabled biar ga loading lama!
 
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
@@ -8,7 +7,7 @@ local CONFIG = {
     HubName = "AlippHUB",
     Subtitle = "Auto Walk",
     Discord = "dsc.gg/alipphub",
-    ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"}, -- Tambah key kamu di sini
+    ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"}, -- Ganti/tambah key kamu
     SaveKey = true
 }
 
@@ -20,7 +19,7 @@ local player = Players.LocalPlayer
 local _G = {
     Verified = false,
     AutoWalk = false,
-    AutoWalkLoop = false,
+    AutoWalkLoop = nil,
     AutoRespawn = false,
     EnableGodMode = false,
     WalkSpeed = 16,
@@ -30,6 +29,8 @@ local _G = {
     HideNametag = false,
     FPSBooster = false
 }
+
+local hiddenTabs = {}  -- Simpan semua tab yang harus di-hide
 
 local function notify(title, message, duration)
     WindUI:Notify({Title = title, Content = message, Duration = duration or 3})
@@ -54,22 +55,22 @@ local function verifyKey(key)
     return false
 end
 
--- Create Window dengan Acrylic FALSE biar instant!
+-- Create Window - ACRYLIC FALSE BIAR GA LOADING LAMA!
 local Window = WindUI:CreateWindow({
     Title = CONFIG.HubName .. " | Loading...",
     SubTitle = CONFIG.Subtitle,
-    Acrylic = false  -- INI YANG BIKIN GA LOADING LAMA LAGI!
+    Theme = "Crimson",
+    Acrylic = false  -- INI PALING PENTING! Instant muncul
 })
 
--- List semua hidden tabs
-local hiddenTabs = {}
-
+-- === BUAT SEMUA TAB DULU (tapi akan di-hide nanti) ===
 local function createAllTabs()
     -- Auto Walk Tab
     local TabAutoWalk = Window:Tab({Title = "Auto Walk", Icon = "walk"})
     table.insert(hiddenTabs, TabAutoWalk)
-    
-    TabAutoWalk:Section({Title = "FPS Booster"}):Toggle({
+
+    local fpsSec = TabAutoWalk:Section({Title = "FPS Booster"})
+    fpsSec:Toggle({
         Title = "Activate FPS Booster",
         Default = false,
         Callback = function(state)
@@ -77,61 +78,65 @@ local function createAllTabs()
             settings().Rendering.QualityLevel = state and 1 or 10
         end
     })
-    
-    TabAutoWalk:Section({Title = "Nametag Menu"}):Toggle({
+
+    local nameSec = TabAutoWalk:Section({Title = "Nametag Menu"})
+    nameSec:Toggle({
         Title = "Hide Nametag",
         Default = false,
         Callback = function(state)
             _G.HideNametag = state
-            -- Logic hide nametag disini kalau mau
+            -- Tambah logic hide nametag kalau perlu
         end
     })
-    
-    TabAutoWalk:Section({Title = "Walk Speed Menu"}):Toggle({
+
+    local walkSec = TabAutoWalk:Section({Title = "Walk Speed Menu"})
+    walkSec:Toggle({
         Title = "Enable Walk Speed",
-        Default = false,
+        Default = _G.WalkSpeedEnabled,
         Callback = function(state)
-            -- Logic toggle walk speed (dari script kamu)
+            _G.WalkSpeedEnabled = state
+            if state and player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.WalkSpeed = _G.WalkSpeed
+            elseif not state and player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.WalkSpeed = 16
+            end
         end
-    }):Slider({
+    })
+    walkSec:Slider({
         Title = "Set Walk Speed",
-        Min = 16, Max = 300, Default = 16,
+        Min = 16,
+        Max = 300,
+        Default = 16,
         Callback = function(val)
             _G.WalkSpeed = val
-            -- Apply speed
+            if _G.WalkSpeedEnabled and player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.WalkSpeed = val
+            end
         end
     })
-    
-    -- Tambahin section lain dari script kamu (Keybind, Setting, dll)
-    -- ... (copy paste dari script kamu)
 
-    -- Credits Tab
+    -- Tambahin semua section lain dari script kamu (Keybind PC, Setting Auto Walk, dll)
+    -- ... (copy paste bagian toggleAutoWalk, god mode, no clip, dll ke sini)
+
+    -- Credits, Bypass, Settings, Hide Menu, dll
     local TabCredits = Window:Tab({Title = "Credits", Icon = "heart"})
     table.insert(hiddenTabs, TabCredits)
     -- Isi credits...
 
-    -- Bypass Tab
     local TabBypass = Window:Tab({Title = "Bypass", Icon = "shield"})
     table.insert(hiddenTabs, TabBypass)
     -- Isi bypass...
 
-    -- Hide Menu / Settings / Themes
-    local TabSettings = Window:Tab({Title = "Settings", Icon = "settings"})
-    table.insert(hiddenTabs, TabSettings)
-    -- Isi themes dropdown, destroy GUI, dll...
+    local TabHideMenu = Window:Tab({Title = "Hide Menu", Icon = "eye-off"})
+    table.insert(hiddenTabs, TabHideMenu)
+    -- Isi toggle menu, themes...
 
-    -- Tambahin semua tab lain (Account, Copy Avatar, dll) dan insert ke hiddenTabs
+    -- Tambahin tab lain: Account, Copy Avatar, Animation, Skybox, Player Menu, Social Media, Logout
 end
 
--- Buat semua tab dulu (tapi hidden)
 createAllTabs()
 
--- Hide semua kecuali Auth
-for _, tab in pairs(hiddenTabs) do
-    tab:SetVisible(false)
-end
-
--- Authentication Tab (selalu visible)
+-- === AUTHENTICATION TAB (SELALU VISIBLE) ===
 local TabAuth = Window:Tab({Title = "Authentication", Icon = "shield-check"})
 
 -- Cek saved key dulu
@@ -140,18 +145,68 @@ if savedKey and verifyKey(savedKey) then
     _G.Verified = true
 end
 
-if _G.Verified then
-    -- Langsung show semua tab
+-- Fungsi unhide semua tab
+local function unlockFeatures()
     for _, tab in pairs(hiddenTabs) do
         tab:SetVisible(true)
     end
     Window:SetTitle(CONFIG.HubName .. " | Auto Walk")
-    -- Tampilan VIP welcome (copy dari script kamu)
-else
-    -- Setup key input
-    TabAuth:Section({Title = "Key System"})
-    -- Paragraph status, input, button verify (copy dari script kamu)
-    -- Di callback verify kalau valid: _G.Verified = true, saveKey, show all tabs dengan loop SetVisible(true)
+    notify("Success", "Semua fitur VIP terbuka!", 5)
 end
 
-notify("AlippHUB", _G.Verified and "Welcome back VIP!" or "Enter key to unlock!", 5)
+if _G.Verified then
+    unlockFeatures()
+    -- Tampilan welcome VIP (paragraph SELAMAT DATANG seperti script kamu)
+else
+    -- Hide semua tab kecuali Auth
+    for _, tab in pairs(hiddenTabs) do
+        tab:SetVisible(false)
+    end
+
+    -- Setup key input
+    TabAuth:Section({Title = "Key System"})
+
+    local statusParagraph = TabAuth:Paragraph({
+        Title = "Status Verifikasi",
+        Content = "⚠️ Status: Not Verified\nMasukkan key untuk unlock"
+    })
+
+    TabAuth:Paragraph({
+        Title = "Information",
+        Content = "Untuk akses full, masukkan key dari Discord:\n" .. CONFIG.Discord
+    })
+
+    local keyInputValue = ""
+    TabAuth:Input({
+        Title = "Enter Key",
+        Placeholder = "Masukkan key...",
+        Callback = function(value)
+            keyInputValue = value
+        end
+    })
+
+    TabAuth:Button({
+        Title = "Verify Key",
+        Callback = function()
+            if keyInputValue == "" then
+                notify("Error", "Masukkan key dulu!", 3)
+                return
+            end
+
+            if verifyKey(keyInputValue) then
+                _G.Verified = true
+                if CONFIG.SaveKey then saveKey(keyInputValue) end
+                unlockFeatures()
+                -- Update status paragraph jadi welcome VIP
+                statusParagraph:Set({
+                    Title = "🌟 SELAMAT DATANG VIP 🌟",
+                    Content = "Status: VERIFIED ✅\nUser: " .. player.Name .. "\nSelamat menikmati semua fitur!"
+                })
+            else
+                notify("Error", "Key salah!", 4)
+            end
+        end
+    })
+end
+
+notify("AlippHUB", _G.Verified and "Welcome back VIP!" or "Masukkan key untuk unlock fitur", 6)
