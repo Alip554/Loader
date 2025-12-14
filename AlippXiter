@@ -1,6 +1,5 @@
--- AlippHUB | Auto Walk VIP - FINAL FIX (Proper Hide Tabs + No Loading)
--- Acrylic disabled + Correct tab hide/show
-
+-- AlippHUB | Auto Walk VIP - FINAL ON-DEMAND TABS (No Empty Tab + Proper Hide)
+-- Load core library clean
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 local CONFIG = {
@@ -10,127 +9,98 @@ local CONFIG = {
     ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"} -- Ganti key kamu
 }
 
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
-local _G = {
-    Verified = false
-}
-
-local hiddenTabs = {} -- Simpan tab objects yang di-hide
+local _G = { Verified = false }
 
 local function notify(title, msg, dur)
     WindUI:Notify({Title = title, Content = msg, Duration = dur or 4})
 end
 
--- Window dengan Acrylic false biar INSTANT muncul
+-- Window clean dengan Acrylic false
 local Window = WindUI:CreateWindow({
-    Title = CONFIG.HubName .. " | Loading...",
+    Title = CONFIG.HubName .. " | Authentication",
     SubTitle = CONFIG.Subtitle,
-    Theme = "Dark", -- Crimson ga ada, Dark mirip gelap merah
-    Acrylic = false -- INI FIX LOADING STUCK!
+    Theme = "Crimson",  -- Merah gelap mirip screenshot
+    Acrylic = false  -- Instant load, no stuck!
 })
 
--- AUTHENTICATION TAB - SELALU VISIBLE DARI AWAL
-local AuthTab = Window:Tab({
-    Title = "Authentication",
-    Icon = "lock"
-})
+-- Authentication Tab & Key System
+local AuthTab = Window:Tab({Title = "Authentication", Icon = "lock"})
 
-local authSection = AuthTab:Section({Title = "Key System"})
+local keySec = AuthTab:Section({Title = "Key System"})
 
-local statusPara = authSection:Paragraph({
-    Title = "Status",
-    Content = "Not Verified\nMasukkan key untuk unlock semua fitur"
-})
+local statusPara = keySec:Paragraph({Title = "Status", Content = "Not Verified"})
 
-authSection:Paragraph({
-    Title = "Info",
-    Content = "Beli key di Discord:\n" .. CONFIG.Discord
-})
+keySec:Paragraph({Title = "Information", Content = "Masukkan key dari Discord:\n" .. CONFIG.Discord})
 
-local keyValue = ""
-authSection:Input({
-    Title = "Input Key",
-    Placeholder = "Masukkan key...",
-    Callback = function(val) keyValue = val end
-})
+local keyInput = ""
+keySec:Input({Title = "Input Key", Placeholder = "Masukkan key...", Callback = function(val) keyInput = val end})
 
-authSection:Button({
-    Title = "Verify Key",
-    Callback = function()
-        if keyValue == "" then
-            notify("Error", "Masukkan key dulu!", 4)
-            return
-        end
-        if table.find(CONFIG.ValidKeys, keyValue) then
-            _G.Verified = true
-            notify("Success", "Key valid! Membuka semua fitur...", 5)
-            Window:SetTitle(CONFIG.HubName .. " | Auto Walk")
-            -- Unhide semua tab
-            for _, tabInfo in pairs(hiddenTabs) do
-                tabInfo.Button.Visible = true
-                tabInfo.Container.Visible = true
-            end
-            -- Update status auth
-            statusPara:Set({
-                Title = "🌟 VIP VERIFIED 🌟",
-                Content = "Selamat datang " .. player.Name .. "!\nSemua fitur premium terbuka."
-            })
-        else
-            notify("Error", "Key salah!", 5)
-        end
+keySec:Button({Title = "Verify Key", Callback = function()
+    if keyInput == "" then notify("Error", "Masukkan key dulu!", 4) return end
+    if table.find(CONFIG.ValidKeys, keyInput) then
+        _G.Verified = true
+        notify("Success", "Key valid! Membuka semua fitur...", 5)
+        Window:SetTitle(CONFIG.HubName .. " | Auto Walk")
+        statusPara:Set({Title = "VERIFIED ✅", Content = "Selamat datang VIP!\nUser: " .. game.Players.LocalPlayer.Name})
+        CreateAllFeatures()  -- Buat & tambah semua tab + isi content
+    else
+        notify("Error", "Key salah!", 5)
     end
-})
-
--- BUAT SEMUA TAB LAIN & LANGSUNG HIDE
-local function createHiddenTab(title, icon)
-    local tab = Window:Tab({Title = title, Icon = icon or "settings"})
-    -- Hide langsung
-    tab.Button.Visible = false
-    tab.Container.Visible = false
-    table.insert(hiddenTabs, {Button = tab.Button, Container = tab.Container})
-    return tab
-end
-
--- Auto Walk Tab (utama)
-local AutoTab = createHiddenTab("Auto Walk", "walk")
-
-local fpsSec = AutoTab:Section({Title = "FPS Booster"})
-fpsSec:Toggle({Title = "Activate FPS Booster", Default = false, Callback = function(state)
-    settings().Rendering.QualityLevel = state and 1 or 10
 end})
 
-local nameSec = AutoTab:Section({Title = "Nametag Menu"})
-nameSec:Toggle({Title = "Hide Nametag", Default = false})
+-- Fungsi buat semua tab & fitur SETELAH verify (no empty!)
+local function CreateAllFeatures()
+    -- Auto Walk Tab
+    local AutoTab = Window:Tab({Title = "Auto Walk", Icon = "walk"})
 
-local walkSec = AutoTab:Section({Title = "Walk Speed Menu"})
-walkSec:Toggle({Title = "Enable Walk Speed", Default = false})
-walkSec:Slider({Title = "Set Walk Speed", Min = 16, Max = 300, Default = 16})
+    -- FPS Booster
+    AutoTab:Section({Title = "FPS Booster"}):Toggle({Title = "Activate FPS Booster", Default = false, Callback = function(state)
+        settings().Rendering.QualityLevel = state and 1 or 10
+    end})
 
--- Tambahin section lain (Keybind, Setting, God Mode, dll) di sini
+    -- Nametag Menu
+    AutoTab:Section({Title = "Nametag Menu"}):Toggle({Title = "Hide Nametag", Default = false})
 
--- Credits Tab
-createHiddenTab("Credits", "heart")
+    -- Walk Speed Menu
+    local walkSec = AutoTab:Section({Title = "Walk Speed Menu"})
+    walkSec:Toggle({Title = "Enable Walk Speed", Default = false, Callback = function(state)
+        -- Logic enable walk speed dari script kamu
+    end})
+    walkSec:Slider({Title = "Set Walk Speed", Min = 16, Max = 300, Default = 16, Callback = function(val)
+        -- Set speed
+    end})
 
--- Bypass Tab
-createHiddenTab("Bypass", "shield")
+    -- Tambah section lain: Keybind (PC), Setting (Loop, Respawn, God Mode), dll dari file kamu
 
--- Hide Menu Tab
-local HideTab = createHiddenTab("Hide Menu", "eye-off")
-HideTab:Section({Title = "Themes UI"}):Dropdown({
-    Title = "Preset Themes",
-    Options = {"Dark", "Light", "Blue", "Purple"},
-    Default = "Dark"
-})
+    -- Credits Tab
+    local CredTab = Window:Tab({Title = "Credits", Icon = "heart"})
+    CredTab:Section({Title = "Special Thanks"}):Paragraph({Title = "", Content = "UI: WindUI\nDev: Alipp\nCommunity: AlippHUB"})
 
--- Tambahin tab lain sesuai screenshot kamu
-createHiddenTab("Account")
-createHiddenTab("Copy Avatar")
-createHiddenTab("Animation")
-createHiddenTab("Skybox")
-createHiddenTab("Player Menu")
-createHiddenTab("Social Media")
-createHiddenTab("Settings")
+    -- Bypass Tab
+    local BypassTab = Window:Tab({Title = "Bypass", Icon = "shield"})
+    BypassTab:Section({Title = "Bypass Features"}):Toggle({Title = "Bypass Admin Detection", Default = false})
+    BypassTab:Section({Title = ""}):Toggle({Title = "Bypass AFK", Default = false})
+    BypassTab:Section({Title = ""}):Button({Title = "AUTO CLICKER | PC"})
+    BypassTab:Section({Title = ""}):Button({Title = "AUTO CLICKER | ANDROID"})
 
-notify("AlippHUB", "UI loaded! Masukkan key di tab Authentication.", 6)
+    -- Hide Menu Tab
+    local HideTab = Window:Tab({Title = "Hide Menu", Icon = "eye-off"})
+    HideTab:Section({Title = "Open Menu (PC)"}):Label({Title = "Default: P"})
+    HideTab:Section({Title = "Toggle Menu"}):Keybind({Title = "Toggle UI", Default = Enum.KeyCode.P, Callback = function() Window:Minimize() end})
+    HideTab:Section({Title = "Themes UI"}):Dropdown({Title = "Preset Themes", Options = {"Crimson", "Dark", "White", "Purple", "Blue"}, Default = "Crimson", Callback = function(choice)
+        WindUI:ChangeTheme(choice)
+    end})
+
+    -- Tab lain (kosong atau isi sesuai kebutuhan)
+    Window:Tab({Title = "Account", Icon = "user"})
+    Window:Tab({Title = "Copy Avatar", Icon = "copy"})
+    Window:Tab({Title = "Animation", Icon = "sparkles"})
+    Window:Tab({Title = "Skybox", Icon = "cloud"})
+    Window:Tab({Title = "Player Menu", Icon = "users"})
+    Window:Tab({Title = "Social Media", Icon = "share"})
+    Window:Tab({Title = "Settings", Icon = "settings"})
+
+    notify("Unlocked", "Semua tab & fitur loaded!", 4)
+end
+
+notify("AlippHUB", "UI ready! Masukkan key di Authentication.", 6)
