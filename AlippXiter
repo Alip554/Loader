@@ -1,11 +1,11 @@
--- AlippHUB | Auto Walk VIP - FINAL FIX WITH TAB HIDE/SHOW
+-- AlippHUB | Auto Walk VIP - FINAL FIX (Correct Tab Visibility)
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 local CONFIG = {
     HubName = "AlippHUB",
     Subtitle = "Auto Walk",
     Discord = "dsc.gg/alipphub",
-    ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"} -- Ganti key kamu
+    ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"} -- Ganti key
 }
 
 local player = game.Players.LocalPlayer
@@ -15,15 +15,15 @@ local function notify(title, content, duration)
     WindUI:Notify({Title = title, Content = content, Duration = duration or 5})
 end
 
--- Window instant no loading
+-- Window instant
 local Window = WindUI:CreateWindow({
     Title = CONFIG.HubName .. " | Authentication",
     SubTitle = CONFIG.Subtitle,
-    Theme = "Dark",  -- Gelap mirip screenshot asli
-    Acrylic = false  -- No stuck loading!
+    Theme = "Dark",
+    Acrylic = false
 })
 
--- Buat semua tab dulu
+-- Buat semua tab
 local AuthTab = Window:Tab({Title = "Authentication", Icon = "lock"})
 
 local AutoTab = Window:Tab({Title = "Auto Walk", Icon = "walk"})
@@ -38,21 +38,26 @@ local PlayerTab = Window:Tab({Title = "Player Menu", Icon = "users"})
 local SocialTab = Window:Tab({Title = "Social Media", Icon = "share"})
 local SettingsTab = Window:Tab({Title = "Settings", Icon = "cog"})
 
--- Hide semua tab kecuali Auth
-AutoTab:Hide()
-CredTab:Hide()
-BypassTab:Hide()
-HideTab:Hide()
-AccountTab:Hide()
-CopyTab:Hide()
-AnimTab:Hide()
-SkyTab:Hide()
-PlayerTab:Hide()
-SocialTab:Hide()
-SettingsTab:Hide()
+-- Hide semua tab lain (button sidebar + container content)
+local function hideTab(tab)
+    tab.Button.Visible = false
+    tab.Container.Visible = false
+end
 
--- Isi content tab (contoh, tambahin full dari file kamu)
--- Auto Walk content
+hideTab(AutoTab)
+hideTab(CredTab)
+hideTab(BypassTab)
+hideTab(HideTab)
+hideTab(AccountTab)
+hideTab(CopyTab)
+hideTab(AnimTab)
+hideTab(SkyTab)
+hideTab(PlayerTab)
+hideTab(SocialTab)
+hideTab(SettingsTab)
+
+-- Isi content tab (contoh lengkap)
+-- Auto Walk
 local fpsSec = AutoTab:Section({Title = "FPS Booster"})
 fpsSec:Toggle({Title = "Activate FPS Booster", Default = false, Callback = function(state)
     settings().Rendering.QualityLevel = state and 1 or 10
@@ -65,27 +70,29 @@ local walkSec = AutoTab:Section({Title = "Walk Speed Menu"})
 walkSec:Toggle({Title = "Enable Walk Speed", Default = false})
 walkSec:Slider({Title = "Set Walk Speed", Min = 16, Max = 300, Default = 16})
 
--- Credits content
+-- Credits
 CredTab:Section({Title = "Special Thanks"}):Paragraph({Title = "", Content = "UI: WindUI\nDev: Alipp\nCommunity: AlippHUB"})
 
--- Bypass content
-BypassTab:Section({Title = "Bypass Features"}):Toggle({Title = "Bypass Admin Detection", Default = false})
-BypassTab:Section({Title = ""}):Toggle({Title = "Bypass AFK", Default = false})
-BypassTab:Section({Title = ""}):Button({Title = "AUTO CLICKER | PC"})
-BypassTab:Section({Title = ""}):Button({Title = "AUTO CLICKER | ANDROID"})
+-- Bypass
+local bypassSec = BypassTab:Section({Title = "Bypass Features"})
+bypassSec:Toggle({Title = "Bypass Admin Detection", Default = false})
+bypassSec:Toggle({Title = "Bypass AFK", Default = false})
+bypassSec:Button({Title = "AUTO CLICKER | PC"})
+bypassSec:Button({Title = "AUTO CLICKER | ANDROID"})
 
--- Hide Menu content
-HideTab:Section({Title = "Themes UI"}):Dropdown({Title = "Preset Themes", Options = {"Dark", "Light", "Rose", "Blue"}, Default = "Dark", Callback = function(choice)
+-- Hide Menu
+local themeSec = HideTab:Section({Title = "Themes UI"})
+themeSec:Dropdown({Title = "Preset Themes", Options = {"Dark", "Light", "Rose", "Blue", "Green"}, Default = "Dark", Callback = function(choice)
     WindUI:ChangeTheme(choice)
 end})
 HideTab:Section({Title = "Toggle Menu"}):Keybind({Title = "Toggle UI", Default = Enum.KeyCode.P, Callback = function() Window:Minimize() end})
 
--- Authentication key system
+-- Key system di AuthTab
 local keySec = AuthTab:Section({Title = "Key System"})
 
-local statusPara = keySec:Paragraph({Title = "Status", Content = "⚠️ Not Verified - Masukkan key untuk unlock"})
+local statusPara = keySec:Paragraph({Title = "Status", Content = "⚠️ Not Verified"})
 
-keySec:Paragraph({Title = "Info", Content = "Beli key premium di Discord:\n" .. CONFIG.Discord})
+keySec:Paragraph({Title = "Info", Content = "Masukkan key dari Discord:\n" .. CONFIG.Discord})
 
 local keyInputValue = ""
 keySec:Input({Title = "Input Key", Placeholder = "Masukkan key...", Callback = function(text) keyInputValue = text end})
@@ -94,25 +101,30 @@ keySec:Button({Title = "Verify Key", Callback = function()
     if keyInputValue == "" then notify("Error", "Masukkan key dulu!", 4) return end
     if table.find(CONFIG.ValidKeys, keyInputValue) then
         _G.Verified = true
-        notify("Success", "✅ Key valid! Semua tab & fitur terbuka!", 6)
+        notify("Success", "✅ Key valid! Semua tab terbuka!", 6)
         Window:SetTitle(CONFIG.HubName .. " | Auto Walk")
-        statusPara:Set({Title = "🌟 VIP VERIFIED 🌟", Content = "Selamat datang " .. player.Name .. "!\nSemua fitur premium aktif."})
+        statusPara:Set({Title = "🌟 VIP VERIFIED 🌟", Content = "Selamat " .. player.Name .. "!\nFitur premium aktif."})
 
-        -- SHOW SEMUA TAB!
-        AutoTab:Show()
-        CredTab:Show()
-        BypassTab:Show()
-        HideTab:Show()
-        AccountTab:Show()
-        CopyTab:Show()
-        AnimTab:Show()
-        SkyTab:Show()
-        PlayerTab:Show()
-        SocialTab:Show()
-        SettingsTab:Show()
+        -- SHOW SEMUA TAB
+        local function showTab(tab)
+            tab.Button.Visible = true
+            tab.Container.Visible = true
+        end
+
+        showTab(AutoTab)
+        showTab(CredTab)
+        showTab(BypassTab)
+        showTab(HideTab)
+        showTab(AccountTab)
+        showTab(CopyTab)
+        showTab(AnimTab)
+        showTab(SkyTab)
+        showTab(PlayerTab)
+        showTab(SocialTab)
+        showTab(SettingsTab)
     else
         notify("Error", "❌ Key salah!", 5)
     end
 end})
 
-notify("AlippHUB", "UI loaded instant! Masukkan key di Authentication.", 7)
+notify("AlippHUB", "UI siap! Masukkan key di Authentication.", 7)
