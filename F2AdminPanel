@@ -1,0 +1,243 @@
+-- F2 Admin Panel UI for Roblox
+-- Modern/Minimalist Design
+-- Works on Mobile & PC
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "F2AdminPanel"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Main Frame (Panel)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 200, 0, 120)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Corner Radius
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = mainFrame
+
+-- Drop Shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.7
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 10, 10)
+shadow.ZIndex = 0
+shadow.Parent = mainFrame
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleBar
+
+-- Fix bottom corners of title bar
+local titleCover = Instance.new("Frame")
+titleCover.Size = UDim2.new(1, 0, 0, 12)
+titleCover.Position = UDim2.new(0, 0, 1, -12)
+titleCover.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+titleCover.BorderSizePixel = 0
+titleCover.Parent = titleBar
+
+-- Title Text
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Admin Panel"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+-- F2 Button
+local f2Button = Instance.new("TextButton")
+f2Button.Name = "F2Button"
+f2Button.Size = UDim2.new(0, 160, 0, 45)
+f2Button.Position = UDim2.new(0.5, -80, 0, 55)
+f2Button.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+f2Button.BorderSizePixel = 0
+f2Button.Text = "Press F2"
+f2Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+f2Button.TextSize = 16
+f2Button.Font = Enum.Font.GothamBold
+f2Button.AutoButtonColor = false
+f2Button.Parent = mainFrame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = f2Button
+
+-- Button Hover Effect
+f2Button.MouseEnter:Connect(function()
+	local tween = TweenService:Create(f2Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(98, 111, 252)})
+	tween:Play()
+end)
+
+f2Button.MouseLeave:Connect(function()
+	local tween = TweenService:Create(f2Button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(88, 101, 242)})
+	tween:Play()
+end)
+
+-- Button Click Effect
+f2Button.MouseButton1Down:Connect(function()
+	local tween = TweenService:Create(f2Button, TweenInfo.new(0.1), {Size = UDim2.new(0, 155, 0, 43)})
+	tween:Play()
+end)
+
+f2Button.MouseButton1Up:Connect(function()
+	local tween = TweenService:Create(f2Button, TweenInfo.new(0.1), {Size = UDim2.new(0, 160, 0, 45)})
+	tween:Play()
+end)
+
+-- F2 Key Press Function
+local function pressF2()
+	-- Method 1: Using VirtualInputManager (Executor Specific)
+	pcall(function()
+		local VirtualInputManager = game:GetService("VirtualInputManager")
+		VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F2, false, game)
+		wait(0.1)
+		VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F2, false, game)
+	end)
+	
+	-- Method 2: Trigger InputBegan/InputEnded events
+	pcall(function()
+		local inputObject = {
+			KeyCode = Enum.KeyCode.F2,
+			UserInputType = Enum.UserInputType.Keyboard
+		}
+		
+		-- Simulate key press
+		for _, connection in pairs(getconnections(UserInputService.InputBegan)) do
+			connection:Fire(inputObject, false)
+		end
+		
+		wait(0.1)
+		
+		-- Simulate key release
+		for _, connection in pairs(getconnections(UserInputService.InputEnded)) do
+			connection:Fire(inputObject, false)
+		end
+	end)
+	
+	-- Visual Feedback
+	f2Button.Text = "F2 Pressed!"
+	wait(0.5)
+	f2Button.Text = "Press F2"
+end
+
+-- Button Click Handler
+f2Button.MouseButton1Click:Connect(function()
+	pressF2()
+end)
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -30, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+closeButton.BorderSizePixel = 0
+closeButton.Text = "×"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextSize = 20
+closeButton.Font = Enum.Font.GothamBold
+closeButton.AutoButtonColor = false
+closeButton.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+
+-- Close Button Hover
+closeButton.MouseEnter:Connect(function()
+	local tween = TweenService:Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 90, 90)})
+	tween:Play()
+end)
+
+closeButton.MouseLeave:Connect(function()
+	local tween = TweenService:Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)})
+	tween:Play()
+end)
+
+-- Close Button Click
+closeButton.MouseButton1Click:Connect(function()
+	screenGui:Destroy()
+end)
+
+-- Minimize Button
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 25, 0, 25)
+minimizeButton.Position = UDim2.new(1, -60, 0, 5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 170, 50)
+minimizeButton.BorderSizePixel = 0
+minimizeButton.Text = "−"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.TextSize = 18
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.AutoButtonColor = false
+minimizeButton.Parent = titleBar
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 6)
+minimizeCorner.Parent = minimizeButton
+
+local isMinimized = false
+
+-- Minimize Button Hover
+minimizeButton.MouseEnter:Connect(function()
+	local tween = TweenService:Create(minimizeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 190, 70)})
+	tween:Play()
+end)
+
+minimizeButton.MouseLeave:Connect(function()
+	local tween = TweenService:Create(minimizeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 170, 50)})
+	tween:Play()
+end)
+
+-- Minimize Button Click
+minimizeButton.MouseButton1Click:Connect(function()
+	if not isMinimized then
+		local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 200, 0, 35)})
+		tween:Play()
+		isMinimized = true
+		minimizeButton.Text = "+"
+	else
+		local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 200, 0, 120)})
+		tween:Play()
+		isMinimized = false
+		minimizeButton.Text = "−"
+	end
+end)
+
+print("F2 Admin Panel Loaded Successfully!")
+print("Made by Claude - Drag the panel to move it around")
