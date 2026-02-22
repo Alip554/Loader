@@ -1,120 +1,1750 @@
--- AlippHUB | Auto Walk VIP - FINAL WORK (Tab Hide/Show Correct)
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+-- ---------- Services ----------
+local Players    = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService= game:GetService("HttpService")
 
-local CONFIG = {
-    HubName = "AlippHUB",
-    Subtitle = "Auto Walk",
-    Discord = "dsc.gg/alipphub",
-    ValidKeys = {"TESTKEY123", "DEMO2024", "RULLZSY2024", "alippvip123"} -- Ganti key
-}
+local player = Players.LocalPlayer
 
-local player = game.Players.LocalPlayer
-local _G = { Verified = false }
-
-local function notify(title, content, duration)
-    WindUI:Notify({Title = title, Content = content, Duration = duration or 5})
+-- Wait for character
+local function waitForChar()
+    local c = player.Character or player.CharacterAdded:Wait()
+    repeat task.wait() until c:FindFirstChild("HumanoidRootPart") and c:FindFirstChildOfClass("Humanoid")
+    return c
 end
 
--- Window instant
+local char = waitForChar()
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+-- ---------- UI Loader ----------
+local ok, WindUILoader = pcall(function()
+    return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+end)
+if not ok or not WindUILoader then
+    warn("Failed to load WindUI. UI features may not work.")
+    return
+end
+local WindUI = WindUILoader
+
+-- ---------- Globals / Vars ----------
+local frameTime = 1/30
+local playbackRate = 1.0
+local isRunning = false
+local paused = false
+local loopRoute = false
+local intervalFlip = false
+
+local bypassActive = false
+local bypassConn = nil
+
+local antiBetonActive = false
+local antiBetonConn = nil
+
+local selectedMountain = nil
+local selectedFrames = nil
+
+-- Default height for route adjustment (so routes align with avatar height)
+local DEFAULT_HEIGHT = 4.006323335280273 --5.469823837280273 --(4.022323337280273 cocok buat nambah mt)
+
+-- Mountain links (only 1 route per mountain)
+local mountainRoutes = {
+    ["DAUN"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/DAUNV2/refs/heads/main/01.lua", Frames = nil },
+    ["*NEW YAHAYUK NORMAL"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/yahayuk/refs/heads/main/cadangan.lua", Frames = nil },
+    ["SAKAHAYANG"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/SAKAHAYANG/refs/heads/main/01.lua", Frames = nil },
+    ["*NEW VELORA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/Bejirrr/Map/refs/heads/main/Data/Velora.lua", Frames = nil },
+    ["SENDANG NORMAL"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/yahayuk/refs/heads/main/sendang1.lua", Frames = nil },
+    ["SENDANG HARD"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/yahayuk/refs/heads/main/sendang2.lua", Frames = nil },
+    ["WASABI"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/WASABI/refs/heads/main/01.lua", Frames = nil },
+    ["RUNIA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/Runia/refs/heads/main/37.lua", Frames = nil },
+    ["MALAIKAT"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/MALAIKAT/refs/heads/main/01.lua", Frames = nil },
+    ["KBG"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/KBG/refs/heads/main/01.lua", Frames = nil },
+    ["FUNNY"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/FUNNY/refs/heads/main/01.lua", Frames = nil },
+    ["*NEW ARUNIKA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/ARUNIKA-V2/refs/heads/main/01.lua", Frames = nil },
+    ["GEMI (MISS TRACK)"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/GEMI/refs/heads/main/01.lua", Frames = nil },
+    ["LANGIT"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/LANGIT/refs/heads/main/01.lua", Frames = nil },
+    ["PRAMBANAN"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/PRAMBANAN/refs/heads/main/01.lua", Frames = nil },
+    ["AGE PRO"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/AGEPRO/refs/heads/main/01.lua", Frames = nil },
+    ["ANTARTIKA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/ANTARTIKA/refs/heads/main/01.lua", Frames = nil },
+    ["YAREUU"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAREUU/refs/heads/main/01.lua", Frames = nil },
+    ["KAWAH TERJUN"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/KAWAH/refs/heads/main/01.lua", Frames = nil },
+    ["MONO"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/MONO/refs/heads/main/01.lua", Frames = nil },
+    ["SERENITY"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/SERENITY/refs/heads/main/01.lua", Frames = nil },
+    ["SALVASTORE"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/SALVASTORE/refs/heads/main/01.lua", Frames = nil },
+    ["CKPTW"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/CKPTW/refs/heads/main/01.lua", Frames = nil },
+    ["PENGANGGURAN"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/PENGANGURAN/refs/heads/main/01.lua", Frames = nil },
+    ["HANA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/HANA/refs/heads/main/01.lua", Frames = nil },
+    ["SWISS (MIS CP)"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/Runia/refs/heads/main/01.lua", Frames = nil },
+    ["YNTKTS"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YNTKTS/refs/heads/main/01.lua", Frames = nil },
+    ["NEWBIE"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/NEWBIE/refs/heads/main/01.lua", Frames = nil },
+    ["DAY ONE"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/DAY/refs/heads/main/01.lua", Frames = nil },
+    ["FREESTYLE"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/FREESTYLE/refs/heads/main/01.lua", Frames = nil },
+    ["BAGEN DAH (FIX ROUTE)"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/BAGEN/refs/heads/main/01.lua", Frames = nil },
+    ["SADEWA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/SADEWA/refs/heads/main/01.lua", Frames = nil },
+    ["YAUDAH"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAUDAH/refs/heads/main/01.lua", Frames = nil },
+    ["AOSORA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/AOSORA/refs/heads/main/01.lua", Frames = nil },
+    ["TALI (FIX RUTE)"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/TALI.lua", Frames = nil },
+    ["DUCKY"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/DUCKY/refs/heads/main/01.lua", Frames = nil },
+    ["BLUSH"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/BLUSH.lua", Frames = nil },
+  	["YAMATE"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/YAMATE.lua", Frames = nil },
+  	["KAMU (ON PROSESS)"] = { Icon = "lucide:mountain-snow", Link = "https", Frames = nil },
+  	["MAAF V2"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/MAAF.lua", Frames = nil },
+  	["SERASA"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/SERASA.lua", Frames = nil },
+  	["MEWING"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/MEWING.lua", Frames = nil },
+  	["*NEW YAHAYUK PRO"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK2/refs/heads/main/01.lua", Frames = nil },
+  	["PARGOY"] = { Icon = "lucide:mountain-snow", Link = "https://raw.githubusercontent.com/LlyXCode/YAHAYUK/refs/heads/main/PARGOY.lua", Frames = nil },
+}
+
+-- ---------- Helper Functions ----------
+local notify = function(title, content, duration)
+    pcall(function()
+        WindUI:Notify({
+            Title = title or "Notice",
+            Content = content or "",
+            Duration = duration or 3,
+            Icon = "bell",
+        })
+    end)
+end
+
+local function logAndNotify(msg, val)
+    local text = val and (msg .. " " .. tostring(val)) or msg
+    print(text)
+    notify(msg, tostring(val or ""), 3)
+end
+
+local function refreshHRP(newChar)
+    if not newChar then newChar = player.Character or player.CharacterAdded:Wait() end
+    hrp = newChar:WaitForChild("HumanoidRootPart")
+end
+player.CharacterAdded:Connect(function(c) refreshHRP(c) end)
+
+-- Calculate current avatar height (for route adjustment)
+local function getCurrentHeight()
+    local c = player.Character or player.CharacterAdded:Wait()
+    local humanoid = c:WaitForChild("Humanoid")
+    return humanoid.HipHeight + (c:FindFirstChild("Head") and c.Head.Size.Y or 2)
+end
+
+-- Adjust route frames vertically to match avatar height
+local function adjustRoute(frames)
+    local adjusted = {}
+    local currentHeight = getCurrentHeight()
+    local offsetY = currentHeight - DEFAULT_HEIGHT
+    for _, cf in ipairs(frames) do
+        local pos = cf.Position
+        local rot = cf - pos
+        local newPos = Vector3.new(pos.X, pos.Y + offsetY, pos.Z)
+        table.insert(adjusted, CFrame.new(newPos) * rot)
+    end
+    return adjusted
+end
+
+-- Remove near-duplicate frames to reduce needless steps
+local function removeDuplicateFrames(frames, tolerance)
+    tolerance = tolerance or 0.01
+    if #frames < 2 then return frames end
+    local newFrames = { frames[1] }
+    for i = 2, #frames do
+        local prev = frames[i-1]
+        local curr = frames[i]
+        local prevPos, currPos = prev.Position, curr.Position
+        local prevRot, currRot = prev - prev.Position, curr - curr.Position
+
+        local posDiff = (prevPos - currPos).Magnitude
+        -- Use rotation position as a proxy for rot difference
+        local rotDiff = (prevRot.Position - currRot.Position).Magnitude
+
+        if posDiff > tolerance or rotDiff > tolerance then
+            table.insert(newFrames, curr)
+        end
+    end
+    return newFrames
+end
+
+-- Interval rotation flip (face opposite) for each frame if enabled
+local function applyIntervalRotation(cf)
+    if intervalFlip then
+        local pos = cf.Position
+        local rot = cf - pos
+        local newRot = CFrame.Angles(0, math.pi, 0) * rot
+        return CFrame.new(pos) * newRot
+    else
+        return cf
+    end
+end
+
+-- Load route from URL (expects a Lua file that returns an array of CFrame objects)
+local function loadRoute(url)
+    local ok, result = pcall(function()
+        local code = game:HttpGet(url)
+        return loadstring(code)()
+    end)
+    if ok and type(result) == "table" then
+        -- Clean duplicates and adjust to current height
+        local cleaned = removeDuplicateFrames(result, 0.01)
+        local adjusted = adjustRoute(cleaned)
+        return adjusted
+    else
+        warn("Failed to load route from: " .. tostring(url))
+        return {}
+    end
+end
+
+-- Find nearest route index among frames given current HRP position
+local function getNearestFrameIndex(frames)
+    local startIdx, dist = 1, math.huge
+    if hrp then
+        local pos = hrp.Position
+        for i, cf in ipairs(frames) do
+            local d = (cf.Position - pos).Magnitude
+            if d < dist then
+                dist = d
+                startIdx = i
+            end
+        end
+    end
+    if startIdx >= #frames then
+        startIdx = math.max(1, #frames - 1)
+    end
+    return startIdx
+end
+
+-- Smooth CFrame lerp with playbackRate & frameTime, honoring paused/isRunning
+local function lerpCF(fromCF, toCF)
+    fromCF = applyIntervalRotation(fromCF)
+    toCF   = applyIntervalRotation(toCF)
+
+    local duration = frameTime / math.max(0.05, playbackRate)
+    local t = 0
+    while t < duration do
+        if not isRunning then break end
+        while paused do task.wait() end
+        local dt = task.wait()
+        t = t + dt
+        local alpha = math.min(t / duration, 1)
+        if hrp and hrp.Parent and hrp:IsDescendantOf(workspace) then
+            hrp.CFrame = fromCF:Lerp(toCF, alpha)
+        end
+    end
+end
+
+-- ---------- Bypass / Anti-Stuck ----------
+local function setupBypass(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    local rootPart = char:WaitForChild("HumanoidRootPart")
+    local lastPos = rootPart.Position
+
+    if bypassConn then bypassConn:Disconnect() end
+    bypassConn = RunService.RenderStepped:Connect(function()
+        if not rootPart or not rootPart.Parent then return end
+        if bypassActive then
+            local direction = (rootPart.Position - lastPos)
+            local dist = direction.Magnitude
+
+            -- small Y detection for jump/fall
+            local yDiff = rootPart.Position.Y - lastPos.Y
+            if yDiff > 0.5 then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            elseif yDiff < -1 then
+                humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+            end
+
+            if dist > 0.01 then
+                local moveVector = direction.Unit * math.clamp(dist * 5, 0, 1)
+                humanoid:Move(moveVector, false)
+            else
+                humanoid:Move(Vector3.zero, false)
+            end
+        end
+        lastPos = rootPart.Position
+    end)
+end
+player.CharacterAdded:Connect(setupBypass)
+if player.Character then setupBypass(player.Character) end
+
+local function setBypass(state)
+    bypassActive = state
+    notify("Animation Bypass", state and "✅ Enabled" or "❌ Disabled", 2)
+end
+
+-- ---------- Anti-Beton (soft fall) ----------
+local function enableAntiBeton()
+    if antiBetonConn then antiBetonConn:Disconnect() end
+
+    antiBetonConn = RunService.Stepped:Connect(function(_, dt)
+        local c = player.Character
+        if not c then return end
+        local rootPart = c:FindFirstChild("HumanoidRootPart")
+        local humanoid = c:FindFirstChild("Humanoid")
+        if not rootPart or not humanoid then return end
+
+        if antiBetonActive and humanoid.FloorMaterial == Enum.Material.Air then
+            local targetY = -50
+            local currentY = rootPart.Velocity.Y
+            local newY = currentY + (targetY - currentY) * math.clamp(dt * 2.5, 0, 1)
+            rootPart.Velocity = Vector3.new(rootPart.Velocity.X, newY, rootPart.Velocity.Z)
+        end
+    end)
+end
+
+local function disableAntiBeton()
+    if antiBetonConn then
+        antiBetonConn:Disconnect()
+        antiBetonConn = nil
+    end
+end
+
+-- ---------- Run / Stop / Loop logic ----------
+local function runSelectedRouteOnce()
+    if not selectedMountain then
+        return notify("Error", "Please select a mountain first.", 3)
+    end
+    local frames = selectedFrames
+    if not frames or #frames < 2 then
+        return notify("Error", "No route loaded. Press Load Route first.", 3)
+    end
+
+    if not hrp then refreshHRP() end
+
+    setBypass(true)
+    isRunning = true
+    paused = false
+
+    local startIdx = getNearestFrameIndex(frames)
+    logAndNotify("Starting route from index:", startIdx)
+
+    for i = startIdx, #frames - 1 do
+        if not isRunning then break end
+        while paused do task.wait() end
+        pcall(function() lerpCF(frames[i], frames[i+1]) end)
+    end
+
+    -- ✅ jangan matikan running kalau loop aktif
+    if not loopRoute then
+        isRunning = false
+        setBypass(false)
+    end
+end
+
+local function runSelectedRouteLoop()
+    if not selectedMountain then return end
+    isRunning = true
+    paused = false
+
+    while isRunning and loopRoute do
+        if not selectedFrames or #selectedFrames < 2 then
+            notify("Error", "Route not loaded.", 3)
+            break
+        end
+
+        setBypass(true)
+
+        local frames = selectedFrames
+        local startIdx = getNearestFrameIndex(frames)
+
+        for i = startIdx, #frames - 1 do
+            if not isRunning or not loopRoute then break end
+            while paused do task.wait() end
+            pcall(function() lerpCF(frames[i], frames[i+1]) end)
+        end
+
+        -- ✅ setelah 1 putaran ulang lagi dari awal
+        task.wait(1)
+    end
+
+    setBypass(false)
+    isRunning = false
+    paused = false
+end
+
+local function stopAllRoutes()
+    if isRunning then
+        logAndNotify("Stop route", "All routes stopped")
+    end
+    isRunning = false
+    paused = false
+    loopRoute = false
+    if bypassActive then
+        bypassActive = false
+        notify("Animation Bypass", "❌ Disabled", 2)
+    end
+end
+
+-- ---------- Anti Idle ----------
+local VirtualUser = game:GetService("VirtualUser")
+local antiIdleConn
+local antiIdleActive = true
+local function enableAntiIdle()
+    if antiIdleConn then antiIdleConn:Disconnect() end
+    antiIdleConn = player.Idled:Connect(function()
+        if antiIdleActive then
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+            notify("Anti Idle", "Auto click performed", 2)
+        end
+    end)
+end
+enableAntiIdle()
+
+-- ---------- UI: WindUI Window ----------
+function gradient(text, startColor, endColor)
+    local result = ""
+    local chars = {}
+
+    for uchar in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        table.insert(chars, uchar)
+    end
+
+    local length = #chars
+
+    for i = 1, length do
+        local t = (i - 1) / math.max(length - 1, 1)
+        local r = startColor.R + (endColor.R - startColor.R) * t
+        local g = startColor.G + (endColor.G - startColor.G) * t
+        local b = startColor.B + (endColor.B - startColor.B) * t
+
+        result = result .. string.format(
+            '<font color="rgb(%d,%d,%d)">%s</font>',
+            math.floor(r * 255),
+            math.floor(g * 255),
+            math.floor(b * 255),
+            chars[i]
+        )
+    end
+
+    return result
+end
+
+local Confirmed = false
+
 local Window = WindUI:CreateWindow({
-    Title = CONFIG.HubName .. " | Authentication",
-    SubTitle = CONFIG.Subtitle,
-    Theme = "Dark",  -- Gelap mirip screenshot
-    Acrylic = false  -- No loading stuck!
+    Title = gradient("AlipHUB 〢 Exc", Color3.fromHex("#FF6AD5"), Color3.fromHex("#C774F7")),
+    Icon = "rbxassetid://93846620462494",
+    IconThemed = true,
+    Author = gradient("Premium", Color3.fromHex("#FF6AD5"), Color3.fromHex("#C774F7")),
+    Folder = "alip Walk",
+    Size = UDim2.fromOffset(400, 350),
+    Transparent = true,
+    Theme = "Dark",
+    SideBarWidth = 200,
+    HideSearchBar = false,
+    ScrollBarEnabled = true,
+    Background = "rbxassetid://100725763584702",
+    WindowControls = false,
+    ShowCloseButton = false,
+    User = {
+        Enabled = true,
+        Anonymous = true, --true anony --false no anony
+        Callback = function()
+            WindUI:Notify({
+                Title = "User Profile",
+                Content = "Profile clicked!",
+                Duration = 3
+            })
+        end
+    }
 })
 
--- Buat semua tab
-local AuthTab = Window:Tab({Title = "Authentication", Icon = "lock"})
+Window:SetBackgroundImage("rbxassetid://100725763584702") --rbxassetid://100725763584702
+Window:SetBackgroundImageTransparency(0.3)
 
-local AutoTab = Window:Tab({Title = "Auto Walk", Icon = "walk"})
-local CredTab = Window:Tab({Title = "Credits", Icon = "heart"})
-local BypassTab = Window:Tab({Title = "Bypass", Icon = "shield"})
-local HideTab = Window:Tab({Title = "Hide Menu", Icon = "eye-off"})
-local AccountTab = Window:Tab({Title = "Account", Icon = "user"})
-local CopyTab = Window:Tab({Title = "Copy Avatar", Icon = "copy"})
-local AnimTab = Window:Tab({Title = "Animation", Icon = "sparkles"})
-local SkyTab = Window:Tab({Title = "Skybox", Icon = "cloud"})
-local PlayerTab = Window:Tab({Title = "Player Menu", Icon = "users"})
-local SocialTab = Window:Tab({Title = "Social Media", Icon = "share"})
-local SettingsTab = Window:Tab({Title = "Settings", Icon = "cog"})
+-- Inject notify to use WindUI
+notify = function(title, content, duration)
+    pcall(function()
+        WindUI:Notify({
+            Title = title or "Notice",
+            Content = content or "",
+            Duration = duration or 3,
+            Icon = "bell",
+        })
+    end)
+end
 
--- ISI CONTENT DULU (sebelum hide biar ga empty)
--- Auto Walk content
-local fpsSec = AutoTab:Section({Title = "FPS Booster"})
-fpsSec:Toggle({Title = "Activate FPS Booster", Default = false, Callback = function(state)
-    settings().Rendering.QualityLevel = state and 1 or 10
-end})
+-- Tabs
+local MainTab = Window:Tab({ Title = "Main", Icon = "geist:shareplay", Default = true })
+local ToolsTab = Window:Tab({ Title = "Tools", Icon = "geist:settings-sliders" })
+local AnimTab  = Window:Tab({ Title = "Animation", Icon = "lucide:film" })
+local ServerTab  = Window:Tab({ Title = "Server", Icon = "lucide:server" })
+local ViewTab  = Window:Tab({ Title = "Appearance", Icon = "lucide:app-window" })
+local InfoTab  = Window:Tab({ Title = "Info", Icon = "lucide:info" })
 
-local nameSec = AutoTab:Section({Title = "Nametag Menu"})
-nameSec:Toggle({Title = "Hide Nametag", Default = false})
+-- ---------- Main Tab UI ----------
+local AllowedUser = "LunetteyhuAA"
+local player = game.Players.LocalPlayer
 
-local walkSec = AutoTab:Section({Title = "Walk Speed Menu"})
-walkSec:Toggle({Title = "Enable Walk Speed", Default = false})
-walkSec:Slider({Title = "Set Walk Speed", Min = 16, Max = 300, Default = 16})
+-- ================================================
+-- SCRIPT DROPDOWN (4 Script)
+-- ================================================
+local ScriptList = {
+    {Title = "FIsh It", Desc = "Execute FIsh It", URL = "https://pastefy.app/Rx9QGWoW/raw", Icon = "droplet"},
+    {Title = "Indo Hangout", Desc = "Execute Indo Hangout", URL = "https://pastefy.app/Link2/raw", Icon = "building-2"},
+    {Title = "Violence District", Desc = "Execute Violence District", URL = "https://pastefy.app/Link3/raw", Icon = "zap"},
+}
 
--- Credits content
-CredTab:Section({Title = "Special Thanks"}):Paragraph({Title = "", Content = "UI Library: WindUI\nScript by: Alipp\nCommunity: AlippHUB"})
+local SelectedScript = ScriptList[1]
 
--- Bypass content
-local bypassSec = BypassTab:Section({Title = "Bypass Features"})
-bypassSec:Toggle({Title = "Bypass Admin Detection", Default = false})
-bypassSec:Toggle({Title = "Bypass AFK", Default = false})
-bypassSec:Button({Title = "AUTO CLICKER | PC"})
-bypassSec:Button({Title = "AUTO CLICKER | ANDROID"})
-
--- Hide Menu content
-local themeSec = HideTab:Section({Title = "Themes UI"})
-themeSec:Dropdown({Title = "Preset Themes", Options = {"Dark", "Light", "Rose", "Blue", "Green"}, Default = "Dark", Callback = function(choice)
-    WindUI:ChangeTheme(choice)
-end})
-HideTab:Section({Title = "Toggle Menu"}):Keybind({Title = "Toggle UI", Default = Enum.KeyCode.P, Callback = function() Window:Minimize() end})
-
--- Hide semua tab lain
-AutoTab:Hide()
-CredTab:Hide()
-BypassTab:Hide()
-HideTab:Hide()
-AccountTab:Hide()
-CopyTab:Hide()
-AnimTab:Hide()
-SkyTab:Hide()
-PlayerTab:Hide()
-SocialTab:Hide()
-SettingsTab:Hide()
-
--- Key system di AuthTab
-local keySec = AuthTab:Section({Title = "Key System"})
-
-local statusPara = keySec:Paragraph({Title = "Status", Content = "⚠️ Not Verified - Masukkan key untuk unlock semua fitur"})
-
-keySec:Paragraph({Title = "Information", Content = "Untuk mengakses menu utama, masukkan key/token dari Discord:\n🔗 " .. CONFIG.Discord})
-
-local keyInputValue = ""
-keySec:Input({Title = "Input Key", Placeholder = "Masukkan key di sini...", Callback = function(text) keyInputValue = text end})
-
-keySec:Button({Title = "Verify Key", Callback = function()
-    if keyInputValue == "" then notify("Error", "Masukkan key dulu!", 4) return end
-    if table.find(CONFIG.ValidKeys, keyInputValue) then
-        _G.Verified = true
-        notify("Success", "✅ Key valid! Membuka semua fitur...", 6)
-        Window:SetTitle(CONFIG.HubName .. " | Auto Walk")
-        statusPara:Set({Title = "🌟 VIP VERIFIED 🌟", Content = "Selamat datang " .. player.Name .. "!\nNikmati semua fitur premium 🔥"})
-
-        -- SHOW SEMUA TAB!
-        AutoTab:Show()
-        CredTab:Show()
-        BypassTab:Show()
-        HideTab:Show()
-        AccountTab:Show()
-        CopyTab:Show()
-        AnimTab:Show()
-        SkyTab:Show()
-        PlayerTab:Show()
-        SocialTab:Show()
-        SettingsTab:Show()
-    else
-        notify("Error", "❌ Key salah atau tidak valid!", 5)
+MainTab:Dropdown({
+    Title = "Select Script",
+    Desc = "Choose a script to run",
+    Values = ScriptList,
+    Value = ScriptList[1],
+    Callback = function(option)
+        SelectedScript = option
+        WindUI:Notify({
+            Title = "Script Selected",
+            Content = option.Title,
+            Icon = "check",
+        })
     end
-end})
+})
 
-notify("AlippHUB", "UI ready instant! Masukkan key di tab Authentication.", 8)
+MainTab:Space()
+
+MainTab:Button({
+    Title = "Run Selected Script",
+    Icon = "play",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        if player.Name ~= AllowedUser then
+            WindUI:Notify({
+                Title = "Access Denied",
+                Content = "❌ Only admin can run this script!",
+                Icon = "x",
+            })
+            return
+        end
+
+        if SelectedScript and SelectedScript.URL then
+            WindUI:Notify({
+                Title = SelectedScript.Title,
+                Content = "⏳ Executing...",
+                Icon = "clock",
+            })
+            task.spawn(function()
+                loadstring(game:HttpGet(SelectedScript.URL))()
+            end)
+            WindUI:Notify({
+                Title = SelectedScript.Title,
+                Content = "✅ Loaded Successfully!",
+                Icon = "check",
+            })
+        end
+    end
+})
+
+-- ================================================
+-- MOUNTAIN DROPDOWN (ALL USERS)
+-- ================================================
+local MountainList = {
+    {Title = "MT YUKARI", Icon = "mountain-snow", URL = "https://raw.githubusercontent.com/LlyXCode-gif/1-DAY-LlyXCode/refs/heads/main/MT%20YUKARI"},
+    {Title = "MT SUGOI", Icon = "mountain-snow", URL = "https://pastefy.app/zgV1XYvk/raw"},
+    {Title = "MT PEDAUNAN", Icon = "mountain-snow", URL = "https://pastefy.app/FKbwCb5u/raw"},
+    {Title = "MT KAWAII", Icon = "mountain-snow", URL = "https://pastefy.app/QBMrtKBP/raw"},
+    {Title = "MT BINGUNG", Icon = "mountain-snow", URL = "https://pastefy.app/0AhMfOrt/raw"},
+    {Title = "PUNCAK MIMPI", Icon = "mountain-snow", URL = "https://raw.githubusercontent.com/LlyXCode-gif/1-DAY-LlyXCode/refs/heads/main/PUNCAK%20MIMPI"},
+    {Title = "MT MONO", Icon = "mountain-snow", URL = "https://raw.githubusercontent.com/LlyXCode-gif/1-DAY-LlyXCode/refs/heads/main/MT%20MONO"},
+    {Title = "HELL EXPEDISION", Icon = "mountain-snow", URL = "https://pastefy.app/M2HpFaaF/raw"},
+    {Title = "MT QIAN", Icon = "mountain-snow", URL = "https://pastefy.app/WTPJy2RX/raw"},
+    {Title = "MT SUMBING", Icon = "mountain-snow", URL = "https://pastefy.app/K1bLyNmW/raw"},
+    {Title = "MT ATIN", Icon = "mountain-snow", URL = "https://pastefy.app/57vX1BC1/raw"},
+    {Title = "MT WAYANG", Icon = "mountain-snow", URL = "https://pastefy.app/8K5KBoUZ/raw"},
+    {Title = "MT CHIBI", Icon = "mountain-snow", URL = "https://raw.githubusercontent.com/LlyXCode-gif/1-DAY-LlyXCode/refs/heads/main/MT%20CHIBI"},
+    {Title = "MT RINJANI", Icon = "mountain-snow", URL = "https://pastefy.app/qNiZHUNG/raw"},
+    {Title = "MT ANEH MODE PRO", Icon = "mountain-snow", URL = "https://pastefy.app/HBPJv4sb/raw"},
+    {Title = "MT NIRWANA HD", Icon = "mountain-snow", URL = "https://pastefy.app/4UGt9Jw7/raw"},
+    {Title = "MT MERAPI", Icon = "mountain-snow", URL = "https://pastefy.app/3dj6WWxV/raw"},
+    {Title = "MT YAHAYUK", Icon = "mountain-snow", URL = "https://pastefy.app/IDEAmL7o/raw"},
+    {Title = "MT DAUN", Icon = "mountain-snow", URL = "https://pastefy.app/oRLSm38i/raw"},
+    {Title = "MT SERENITY", Icon = "mountain-snow", URL = "https://pastefy.app/HDHZId0a/raw"},
+    {Title = "MT FUNNY", Icon = "mountain-snow", URL = "https://pastefy.app/3arnY70k/raw"},
+    {Title = "MT NAO", Icon = "mountain-snow", URL = "https://pastefy.app/xfS7EOD8/raw"},
+    {Title = "MT BATIN", Icon = "mountain-snow", URL = "https://pastefy.app/dofKpBYE/raw"},
+    {Title = "MT PENGANGGURAN", Icon = "mountain-snow", URL = "https://pastefy.app/GCjmzKkR/raw"},
+    {Title = "MT GEMI", Icon = "mountain-snow", URL = "https://pastefy.app/OafDfRM9/raw"},
+  	{Title = "MT TALI", Icon = "mountain-snow", URL = "https://raw.githubusercontent.com/LlyXCode-gif/LlyXCode/refs/heads/main/TALI"},
+}
+
+local SelectedMountain = MountainList[1]
+
+MainTab:Dropdown({
+    Title = "Select TP Mountain",
+    Desc = "Choose a mountain to load",
+    Values = MountainList,
+    Value = MountainList[1],
+    Callback = function(option)
+        SelectedMountain = option
+        WindUI:Notify({
+            Title = "Mountain Selected",
+            Content = option.Title,
+            Icon = "check",
+        })
+    end
+})
+
+MainTab:Space()
+
+MainTab:Button({
+    Title = "Load Selected TP Mountain",
+    Icon = "play",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        if SelectedMountain and SelectedMountain.URL then
+            WindUI:Notify({
+                Title = SelectedMountain.Title,
+                Content = "⏳ Loading...",
+                Icon = "clock",
+            })
+            task.spawn(function()
+                loadstring(game:HttpGet(SelectedMountain.URL))()
+            end)
+            WindUI:Notify({
+                Title = SelectedMountain.Title,
+                Content = "✅ Loaded Successfully!",
+                Icon = "check",
+            })
+        end
+    end
+})
+
+-- Mountain Dropdown
+local mountainList = {}
+for name,_ in pairs(mountainRoutes) do table.insert(mountainList, name) end
+table.sort(mountainList)
+
+-- Mountain Dropdown
+local mountainList = {}
+for name,_ in pairs(mountainRoutes) do table.insert(mountainList, name) end
+table.sort(mountainList)
+
+local mountainDropdown = MainTab:Dropdown({
+    Title = "Select Mountain",
+    Icon = "lucide:mountain",
+    Values = mountainList,
+    Callback = function(choice)
+        selectedMountain = choice
+        selectedFrames = nil -- clear previously loaded frames
+        notify("Mountain Selected", choice, 2)
+    end
+})
+
+-- Load Route Button
+MainTab:Button({
+    Title = "Load Route Auto Walk",
+    Icon = "lucide:download",
+    Desc = "Load route from the selected mountain",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        if not selectedMountain then
+            return notify("Error", "Please select a mountain first.", 3)
+        end
+        local link = mountainRoutes[selectedMountain].Link
+        notify("Loading Route...", "Please wait while route is loaded.", 3)
+        task.spawn(function()
+            local frames = loadRoute(link)
+            if frames and #frames > 2 then
+                selectedFrames = frames
+                mountainRoutes[selectedMountain].Frames = frames
+                notify("Success", "Route loaded. You can press Run.", 3)
+            else
+                notify("Failed", "Route is empty or invalid.", 3)
+            end
+        end)
+    end
+})
+
+-- Speed Dropdown (playback)
+local speeds = {}
+for v = 0.25, 3, 0.25 do table.insert(speeds, string.format("%.2fx", v)) end
+MainTab:Dropdown({
+    Title = "Playback Speed",
+    Icon = "lucide:zap",
+    Values = speeds,
+    Value = "1.00x",
+    Callback = function(option)
+        local num = tonumber(option:match("([%d%.]+)"))
+        if num then
+            playbackRate = num
+            logAndNotify("Playback Speed set to", string.format("%.2fx", playbackRate))
+        else
+            notify("Playback Speed", "Failed to read option!", 3)
+        end
+    end
+})
+
+-- Interval flip toggle
+MainTab:Toggle({
+    Title = "Interval Flip (face opposite)",
+    Icon = "lucide:refresh-ccw",
+    Value = false,
+    Callback = function(state)
+        intervalFlip = state
+        notify("Interval Flip", state and "Enabled" or "Disabled", 2)
+    end
+})
+
+-- Anti Beton toggle (soft falling)
+MainTab:Toggle({
+    Title = "Anti-Beton (Soft Fall)",
+    Icon = "lucide:shield",
+    Value = false,
+    Callback = function(state)
+        antiBetonActive = state
+        if state then
+            enableAntiBeton()
+            notify("Anti-Beton", "Enabled (Ultra-Smooth)", 2)
+        else
+            disableAntiBeton()
+            notify("Anti-Beton", "Disabled", 2)
+        end
+    end
+})
+
+local loopRoute = false
+local isRunning = false
+
+-- ▶ RUN (from nearest frame)
+MainTab:Button({
+    Title = "▶ RUN (from nearest frame)",
+    Icon = "lucide:play",
+    Desc = "Run loaded route from the nearest checkpoint to your position",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        if not selectedMountain then return notify("Error", "Select a mountain first.", 3) end
+        if not selectedFrames then return notify("Error", "Please load the route first.", 3) end
+        if isRunning then return notify("Info", "Already running.", 2) end
+
+        isRunning = true
+        task.spawn(function()
+            repeat
+                runSelectedRouteOnce()   -- Jalankan route sekali
+                task.wait(0.1)           -- beri jeda biar loop bisa dicek
+            until not loopRoute or not isRunning
+            isRunning = false
+        end)
+    end
+})
+
+-- 🔁 Loop Route
+MainTab:Button({
+    Title = "🔁 Loop Route",
+    Icon = "lucide:repeat",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        loopRoute = not loopRoute
+        notify("Loop Mode", loopRoute and "ON" or "OFF", 2)
+    end
+})
+
+-- ⛔ Stop
+MainTab:Button({
+    Title = "⛔ Stop",
+    Icon = "geist:stop-circle",
+    Desc = "Stop current route",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        isRunning = false
+        stopAllRoutes()   -- fungsi bawaan untuk menghentikan movement
+    end
+})
+
+-- ---------- Tools Tab (Copy Player, WalkSpeed, Jump, Tools) ----------
+local UserInputService = game:GetService("UserInputService")
+local player = game:GetService("Players").LocalPlayer
+local infJumpEnabled = false
+
+ToolsTab:Toggle({
+    Title = "Infinity Jump",
+    Desc = "Jump without limits (ON / OFF)",
+    Default = false,
+    Callback = function(state)
+        infJumpEnabled = state
+        if state then
+            WindUI:Notify({
+                Title = "Infinity Jump",
+                Description = "Infinity Jump enabled.",
+                Duration = 3
+            })
+        else
+            WindUI:Notify({
+                Title = "Infinity Jump",
+                Description = "Infinity Jump disabled.",
+                Duration = 3
+            })
+        end
+    end,
+})
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled then
+        local character = player.Character
+        if character and character:FindFirstChildWhichIsA("Humanoid") then
+            character:FindFirstChildWhichIsA("Humanoid"):ChangeState("Jumping")
+        end
+    end
+end)
+
+ToolsTab:Slider({
+    Title = "WalkSpeed",
+    Icon = "lucide:zap",
+    Desc = "Set your character walk speed",
+    Value = { Min = 10, Max = 500, Default = 16 },
+    Step = 1,
+    Suffix = "Speed",
+    Callback = function(val)
+        local c = player.Character
+        if c and c:FindFirstChild("Humanoid") then c.Humanoid.WalkSpeed = val end
+    end
+})
+
+ToolsTab:Slider({
+    Title = "Jump Power",
+    Icon = "lucide:zap",
+    Desc = "Set your character jump power",
+    Value = { Min = 10, Max = 500, Default = 50 },
+    Step = 1,
+    Suffix = "Power",
+    Callback = function(val)
+        local c = player.Character
+        if c and c:FindFirstChild("Humanoid") then c.Humanoid.JumpPower = val end
+    end
+})
+
+ToolsTab:Button({
+    Title = "Respawn",
+    Icon = "lucide:user-minus",
+    Desc = "Respawn your character",
+    Callback = function()
+        local ok, err = pcall(function() player.Character:BreakJoints() end)
+        if not ok then notify("Error", "Failed to respawn: " .. tostring(err), 3) end
+    end
+})
+
+ToolsTab:Button({
+    Title = "Speed Coil",
+    Icon = "lucide:zap",
+    Desc = "Give a Speed Coil tool to your backpack (local only)",
+    Callback = function()
+        local speedValue = 23
+        local function giveCoil(char)
+            local backpack = player:WaitForChild("Backpack")
+            if backpack:FindFirstChild("Speed Coil") or char:FindFirstChild("Speed Coil") then return end
+            local tool = Instance.new("Tool")
+            tool.Name = "Speed Coil"
+            tool.RequiresHandle = false
+            tool.Parent = backpack
+            tool.Equipped:Connect(function()
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then humanoid.WalkSpeed = speedValue end
+            end)
+            tool.Unequipped:Connect(function()
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then humanoid.WalkSpeed = 16 end
+            end)
+        end
+        if player.Character then giveCoil(player.Character) end
+        player.CharacterAdded:Connect(function(c) task.wait(1); giveCoil(c) end)
+        notify("Speed Coil", "Speed Coil added to Backpack (local)", 2)
+    end
+})
+
+ToolsTab:Button({
+    Title = "Teleport Tool",
+    Icon = "lucide:chevrons-up-down",
+    Desc = "Create a teleport tool in your backpack (click on ground to teleport)",
+    Callback = function()
+        local mouse = player:GetMouse()
+        local tool = Instance.new("Tool")
+        tool.RequiresHandle = false
+        tool.Name = "Teleport"
+        tool.Parent = player:WaitForChild("Backpack")
+        tool.Activated:Connect(function()
+            if not mouse.Hit then return end
+            local c = player.Character
+            if c and c:FindFirstChild("HumanoidRootPart") then
+                c.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0))
+            end
+        end)
+        notify("TP Tool", "Teleport tool added to Backpack", 2)
+    end
+})
+
+ToolsTab:Button({
+    Title = "Load Gling GUI",
+    Icon = "lucide:layers-2",
+    Desc = "Load Gling GUI (external)",
+    Callback = function()
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Fling-Gui-Op-47914"))()
+        end)
+    end
+})
+-----------------------------------------------------------------------------------------------------------
+local PlayersService = game:GetService("Players")
+local LocalPlayer = PlayersService.LocalPlayer
+
+local function getHeadshotUrl(userId)
+    local ok, url = pcall(function()
+        return PlayersService:GetUserThumbnailAsync(
+            userId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size150x150
+        )
+    end)
+    if ok and url then
+        return url
+    else
+        return "https://www.roblox.com/headshot-thumbnail/image?userId=" ..
+            tostring(userId) .. "&width=150&height=150&format=png"
+    end
+end
+
+local function copyAvatarFromPlayer(targetPlr)
+    if not targetPlr or not targetPlr.UserId then
+        Sukses("error", "Tidak ada player yang dipilih.")
+        return
+    end
+
+    local username = targetPlr.Name
+    local userId
+    local success, result = pcall(function()
+        return PlayersService:GetUserIdFromNameAsync(username)
+    end)
+    if success then
+        userId = result
+    else
+        userId = targetPlr.UserId
+    end
+
+    if not LocalPlayer.Character then
+        Sukses("error", "Karakter kamu belum dimuat.")
+        return
+    end
+
+    local okDesc, humanoidDesc = pcall(function()
+        return PlayersService:GetHumanoidDescriptionFromUserId(userId)
+    end)
+    if not okDesc or not humanoidDesc then
+        Sukses("error", "Gagal mengambil avatar dari player.")
+        return
+    end
+
+    local char = LocalPlayer.Character
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then
+        Sukses("error", "Humanoid tidak ditemukan di karakter kamu.")
+        return
+    end
+
+    for _, item in ipairs(char:GetChildren()) do
+        if item:IsA("Accessory") or item:IsA("Hat") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("ShirtGraphic") then
+            item:Destroy()
+        end
+    end
+
+    task.wait(0.2)
+    local applied = false
+
+    if humanoid.ApplyDescriptionClientServer then
+        applied = pcall(function()
+            humanoid:ApplyDescriptionClientServer(humanoidDesc)
+        end)
+    end
+    if not applied then
+        applied = pcall(function()
+            humanoid:ApplyDescription(humanoidDesc)
+        end)
+    end
+    if not applied then
+        applied = pcall(function()
+            LocalPlayer:LoadCharacter()
+            task.wait(1)
+            local newHumanoid = LocalPlayer.Character:WaitForChild("Humanoid")
+            newHumanoid:ApplyDescription(humanoidDesc)
+        end)
+    end
+
+    if applied then
+        Sukses("done", "Avatar berhasil disalin dari " .. username .. ".")
+    else
+        Sukses("error", "Gagal menerapkan avatar, game mungkin membatasi perubahan avatar.")
+    end
+end
+
+-- MASUK KE TOOLS TAB
+local CopyAvatarTab = ToolsTab:Section({
+    Title = "Copy Avatar",
+    TextXAlignment = "Left",
+    TextSize = 18,
+})
+
+-- RGB FULL EFFECT
+task.spawn(function()
+    while task.wait() do
+        local t = tick() * 2.5 -- kecepatan RGB (besar = lebih cepat)
+        local color = Color3.fromHSV((t % 1), 1, 1)
+
+        pcall(function()
+            -- Title RGB
+            if CopyAvatarTab.SetTitleColor then
+                CopyAvatarTab:SetTitleColor(color)
+            end
+
+            -- Accent / Border / Line RGB (library support)
+            if CopyAvatarTab.SetAccent then
+                CopyAvatarTab:SetAccent(color)
+            elseif CopyAvatarTab.Accent then
+                CopyAvatarTab:Accent(color)
+            elseif CopyAvatarTab.Color then
+                CopyAvatarTab:Color(color)
+            end
+        end)
+    end
+end)
+
+local playerInfoSection = CopyAvatarTab:Paragraph({
+    Title = "No player selected",
+    Desc = "Select a player from dropdown to see info",
+    Buttons = {}
+})
+
+local targetPlayer = nil
+
+local function updateTargetInfo(plr)
+    playerInfoSection:Destroy()
+
+    if not plr then
+        playerInfoSection = CopyAvatarTab:Paragraph({
+            Title = "No player selected",
+            Desc = "Select a player from dropdown to see info",
+            Buttons = {}
+        })
+        return
+    end
+
+    targetPlayer = plr
+    local username = plr.Name
+    local displayName = plr.DisplayName
+    local userId = plr.UserId
+    local headshotUrl = getHeadshotUrl(userId)
+
+    playerInfoSection = CopyAvatarTab:Paragraph({
+        Title = "User: " .. username .. ", Nick: " .. displayName .. " | ID: " .. tostring(userId),
+        Desc = "Player targeted",
+        Image = headshotUrl,
+        ImageSize = 80,
+        Buttons = {
+            {
+                Icon = "clipboard",
+                Title = "Copy Username",
+                Callback = function()
+                    if setclipboard then
+                        setclipboard(username)
+                        Sukses("info", "Username '" .. username .. "' berhasil disalin ke clipboard.")
+                    else
+                        Sukses("error", "setclipboard tidak tersedia di executor kamu.")
+                    end
+                end
+            },
+            {
+                Icon = "user",
+                Title = "Copy Avatar",
+                Callback = function()
+                    copyAvatarFromPlayer(plr)
+                end
+            }
+        }
+    })
+end
+
+local function getListPlayer()
+    local names = {"None"}
+    for _, plr in ipairs(PlayersService:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            table.insert(names, plr.Name)
+        end
+    end
+    return names
+end
+
+local playerDropdown = CopyAvatarTab:Dropdown({
+    Title = "All Players",
+    Values = getListPlayer(),
+    Value = "None",
+    Callback = function(selectedName)
+        if selectedName == "None" then
+            updateTargetInfo(nil)
+        else
+            local plr = PlayersService:FindFirstChild(selectedName)
+            if plr then
+                updateTargetInfo(plr)
+            else
+                updateTargetInfo(nil)
+            end
+        end
+    end
+})
+
+PlayersService.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    playerDropdown:Refresh(getListPlayer())
+end)
+
+PlayersService.PlayerRemoving:Connect(function(plr)
+    playerDropdown:Refresh(getListPlayer())
+    if targetPlayer == plr then
+        updateTargetInfo(nil)
+        playerDropdown:Select("None")
+    end
+end)
+----------------------------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function loadExternalUI(url, tag)
+    -- Hapus UI lama jika ada
+    for _, container in pairs({game.CoreGui, LocalPlayer:WaitForChild("PlayerGui")}) do
+        local old = container:FindFirstChild(tag)
+        if old then old:Destroy() end
+    end
+
+    -- Snapshot sebelum load
+    local before = {}
+    for _, container in pairs({game.CoreGui, LocalPlayer:WaitForChild("PlayerGui")}) do
+        for _, gui in pairs(container:GetChildren()) do
+            before[gui] = true
+        end
+    end
+
+    -- Load UI
+    loadstring(game:HttpGet(url))()
+
+    -- Tunggu UI muncul
+    task.wait(0.4)
+
+    -- Deteksi GUI baru & rename
+    for _, container in pairs({game.CoreGui, LocalPlayer:WaitForChild("PlayerGui")}) do
+        for _, gui in pairs(container:GetChildren()) do
+            if not before[gui] then
+                gui.Name = tag
+                return gui
+            end
+        end
+    end
+end
+
+local function removeUI(tag)
+    for _, container in pairs({game.CoreGui, LocalPlayer:WaitForChild("PlayerGui")}) do
+        local gui = container:FindFirstChild(tag)
+        if gui then gui:Destroy() end
+    end
+end
+
+-- TOGGLE UI EMOTE
+AnimTab:Toggle({
+    Title = "Emote",
+    Desc = "Show the external Emote UI",
+    Default = false,
+    Callback = function(state)
+        if state then
+            loadExternalUI("https://pastefy.app/utJxhnn0/raw", "EMOTE_UI_LOADED")
+        else
+            removeUI("EMOTE_UI_LOADED")
+        end
+    end
+})
+
+-- TOGGLE UI ANIMASI
+AnimTab:Toggle({
+    Title = "All Animasi",
+    Desc = "Show the external Animation UI",
+    Default = false,
+    Callback = function(state)
+        if state then
+            loadExternalUI("https://pastefy.app/N5NUhiq5/raw", "ANIM_UI_LOADED")
+        else
+            removeUI("ANIM_UI_LOADED")
+        end
+    end
+})
+
+-- 🔹 Daftar Run Animations lengkap 18
+local RunAnimations = { 
+    {name="Run Animation 1", idle1="rbxassetid://122257458498464", idle2="rbxassetid://102357151005774", walk="http://www.roblox.com/asset/?id=18537392113", run="rbxassetid://82598234841035", jump="rbxassetid://75290611992385", fall="http://www.roblox.com/asset/?id=11600206437", climb="http://www.roblox.com/asset/?id=10921257536", swim="http://www.roblox.com/asset/?id=10921264784", swimidle="http://www.roblox.com/asset/?id=10921265698"},
+    {name="Run Animation 2", idle1="rbxassetid://122257458498464", idle2="rbxassetid://102357151005774", walk="rbxassetid://122150855457006", run="rbxassetid://82598234841035", jump="rbxassetid://75290611992385", fall="rbxassetid://98600215928904", climb="rbxassetid://88763136693023", swim="rbxassetid://133308483266208", swimidle="rbxassetid://109346520324160"},
+    {name="Run Animation 3", idle1="http://www.roblox.com/asset/?id=18537376492", idle2="http://www.roblox.com/asset/?id=18537371272", walk="http://www.roblox.com/asset/?id=18537392113", run="http://www.roblox.com/asset/?id=18537384940", jump="http://www.roblox.com/asset/?id=18537380791", fall="http://www.roblox.com/asset/?id=18537367238", climb="http://www.roblox.com/asset/?id=10921271391", swim="http://www.roblox.com/asset/?id=99384245425157", swimidle="http://www.roblox.com/asset/?id=113199415118199"},
+    {name="Run Animation 4", idle1="http://www.roblox.com/asset/?id=118832222982049", idle2="http://www.roblox.com/asset/?id=76049494037641", walk="http://www.roblox.com/asset/?id=92072849924640", run="http://www.roblox.com/asset/?id=72301599441680", jump="http://www.roblox.com/asset/?id=104325245285198", fall="http://www.roblox.com/asset/?id=121152442762481", climb="http://www.roblox.com/asset/?id=507765644", swim="http://www.roblox.com/asset/?id=99384245425157", swimidle="http://www.roblox.com/asset/?id=113199415118199"},
+    {name="Run Animation 5", idle1="http://www.roblox.com/asset/?id=656117400", idle2="http://www.roblox.com/asset/?id=656118341", walk="http://www.roblox.com/asset/?id=656121766", run="http://www.roblox.com/asset/?id=656118852", jump="http://www.roblox.com/asset/?id=656117878", fall="http://www.roblox.com/asset/?id=656115606", climb="http://www.roblox.com/asset/?id=656114359", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 6", idle1="http://www.roblox.com/asset/?id=616006778", idle2="http://www.roblox.com/asset/?id=616008087", walk="http://www.roblox.com/asset/?id=616013216", run="http://www.roblox.com/asset/?id=616010382", jump="http://www.roblox.com/asset/?id=616008936", fall="http://www.roblox.com/asset/?id=616005863", climb="http://www.roblox.com/asset/?id=616003713", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 7", idle1="http://www.roblox.com/asset/?id=1083195517", idle2="http://www.roblox.com/asset/?id=1083214717", walk="http://www.roblox.com/asset/?id=1083178339", run="http://www.roblox.com/asset/?id=1083216690", jump="http://www.roblox.com/asset/?id=1083218792", fall="http://www.roblox.com/asset/?id=1083189019", climb="http://www.roblox.com/asset/?id=1083182000", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 8", idle1="http://www.roblox.com/asset/?id=616136790", idle2="http://www.roblox.com/asset/?id=616138447", walk="http://www.roblox.com/asset/?id=616146177", run="http://www.roblox.com/asset/?id=616140816", jump="http://www.roblox.com/asset/?id=616139451", fall="http://www.roblox.com/asset/?id=616134815", climb="http://www.roblox.com/asset/?id=616133594", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 9", idle1="http://www.roblox.com/asset/?id=616088211", idle2="http://www.roblox.com/asset/?id=616089559", walk="http://www.roblox.com/asset/?id=616095330", run="http://www.roblox.com/asset/?id=616091570", jump="http://www.roblox.com/asset/?id=616090535", fall="http://www.roblox.com/asset/?id=616087089", climb="http://www.roblox.com/asset/?id=616086039", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 10", idle1="http://www.roblox.com/asset/?id=910004836", idle2="http://www.roblox.com/asset/?id=910009958", walk="http://www.roblox.com/asset/?id=910034870", run="http://www.roblox.com/asset/?id=910025107", jump="http://www.roblox.com/asset/?id=910016857", fall="http://www.roblox.com/asset/?id=910001910", climb="http://www.roblox.com/asset/?id=616086039", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 11", idle1="http://www.roblox.com/asset/?id=742637544", idle2="http://www.roblox.com/asset/?id=742638445", walk="http://www.roblox.com/asset/?id=742640026", run="http://www.roblox.com/asset/?id=742638842", jump="http://www.roblox.com/asset/?id=742637942", fall="http://www.roblox.com/asset/?id=742637151", climb="http://www.roblox.com/asset/?id=742636889", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 12", idle1="http://www.roblox.com/asset/?id=616111295", idle2="http://www.roblox.com/asset/?id=616113536", walk="http://www.roblox.com/asset/?id=616122287", run="http://www.roblox.com/asset/?id=616117076", jump="http://www.roblox.com/asset/?id=616115533", fall="http://www.roblox.com/asset/?id=616108001", climb="http://www.roblox.com/asset/?id=616104706", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 13", idle1="http://www.roblox.com/asset/?id=657595757", idle2="http://www.roblox.com/asset/?id=657568135", walk="http://www.roblox.com/asset/?id=657552124", run="http://www.roblox.com/asset/?id=657564596", jump="http://www.roblox.com/asset/?id=658409194", fall="http://www.roblox.com/asset/?id=657600338", climb="http://www.roblox.com/asset/?id=658360781", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 14", idle1="http://www.roblox.com/asset/?id=616158929", idle2="http://www.roblox.com/asset/?id=616160636", walk="http://www.roblox.com/asset/?id=616168032", run="http://www.roblox.com/asset/?id=616163682", jump="http://www.roblox.com/asset/?id=616161997", fall="http://www.roblox.com/asset/?id=616157476", climb="http://www.roblox.com/asset/?id=616156119", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 15", idle1="http://www.roblox.com/asset/?id=845397899", idle2="http://www.roblox.com/asset/?id=845400520", walk="http://www.roblox.com/asset/?id=845403856", run="http://www.roblox.com/asset/?id=845386501", jump="http://www.roblox.com/asset/?id=845398858", fall="http://www.roblox.com/asset/?id=845396048", climb="http://www.roblox.com/asset/?id=845392038", swim="http://www.roblox.com/asset/?id=910028158", swimidle="http://www.roblox.com/asset/?id=910030921"},
+    {name="Run Animation 16", idle1="http://www.roblox.com/asset/?id=782841498", idle2="http://www.roblox.com/asset/?id=782845736", walk="http://www.roblox.com/asset/?id=782843345", run="http://www.roblox.com/asset/?id=782842708", jump="http://www.roblox.com/asset/?id=782847020", fall="http://www.roblox.com/asset/?id=782846423", climb="http://www.roblox.com/asset/?id=782843869", swim="http://www.roblox.com/asset/?id=18537389531", swimidle="http://www.roblox.com/asset/?id=18537387180"},
+    {name="Run Animation 17", idle1="http://www.roblox.com/asset/?id=891621366", idle2="http://www.roblox.com/asset/?id=891633237", walk="http://www.roblox.com/asset/?id=891667138", run="http://www.roblox.com/asset/?id=891636393", jump="http://www.roblox.com/asset/?id=891627522", fall="http://www.roblox.com/asset/?id=891617961", climb="http://www.roblox.com/asset/?id=891609353", swim="http://www.roblox.com/asset/?id=18537389531", swimidle="http://www.roblox.com/asset/?id=18537387180"},
+    {name="Run Animation 18", idle1="http://www.roblox.com/asset/?id=750781874", idle2="http://www.roblox.com/asset/?id=750782770", walk="http://www.roblox.com/asset/?id=750785693", run="http://www.roblox.com/asset/?id=750783738", jump="http://www.roblox.com/asset/?id=750782230", fall="http://www.roblox.com/asset/?id=750780242", climb="http://www.roblox.com/asset/?id=750779899", swim="http://www.roblox.com/asset/?id=18537389531", swimidle="http://www.roblox.com/asset/?id=18537387180"},
+}
+
+-- 🔹 Variabel global
+local LocalPlayer = game.Players.LocalPlayer
+local OriginalAnimations = {}
+local currentAnimationActive = nil
+
+-- 🔹 Fungsi simpan animasi asli
+local function SaveOriginal(Animate)
+    OriginalAnimations = {}
+    for _, child in ipairs(Animate:GetDescendants()) do
+        if child:IsA("Animation") then
+            OriginalAnimations[child] = child.AnimationId
+        end
+    end
+end
+
+-- 🔹 Fungsi apply animasi baru
+local function ApplyAnimation(Animate, Humanoid, pack)
+    Animate.idle.Animation1.AnimationId = pack.idle1
+    Animate.idle.Animation2.AnimationId = pack.idle2
+    Animate.walk.WalkAnim.AnimationId = pack.walk
+    Animate.run.RunAnim.AnimationId = pack.run
+    Animate.jump.JumpAnim.AnimationId = pack.jump
+    Animate.fall.FallAnim.AnimationId = pack.fall
+    Animate.climb.ClimbAnim.AnimationId = pack.climb
+    Animate.swim.Swim.AnimationId = pack.swim
+    Animate.swimidle.SwimIdle.AnimationId = pack.swimidle
+    Humanoid.Jump = true
+end
+
+-- 🔹 Fungsi restore animasi asli
+local function RestoreOriginal()
+    for anim, id in pairs(OriginalAnimations) do
+        if anim and anim:IsA("Animation") then
+            anim.AnimationId = id
+        end
+    end
+    OriginalAnimations = {}
+end
+
+-- 🔹 Toggle animation pack di tab AnimTab
+local animationInteracted = {}
+
+for i, pack in ipairs(RunAnimations) do
+    animationInteracted[pack.name] = false
+
+    AnimTab:Toggle({
+        Title = pack.name,
+        Desc = "Apply " .. pack.name,
+        Icon = "zap",
+        Type = "Checkbox",
+        Value = false,
+        Callback = function(state)
+            local Char = LocalPlayer.Character
+            if Char and Char:FindFirstChild("Animate") and Char:FindFirstChild("Humanoid") then
+                local Animate = Char.Animate
+                local Humanoid = Char.Humanoid
+
+                if state then
+                    -- Uncheck toggle lain supaya cuma satu aktif
+                    for _, otherPack in ipairs(RunAnimations) do
+                        if otherPack.name ~= pack.name and animationInteracted[otherPack.name] then
+                            animationInteracted[otherPack.name] = false
+                            -- Update toggle UI
+                            AnimTab:SetToggleState(otherPack.name, false)
+                        end
+                    end
+
+                    SaveOriginal(Animate)
+                    ApplyAnimation(Animate, Humanoid, pack)
+                    currentAnimationActive = pack.name
+                    animationInteracted[pack.name] = true
+                    Notify(pack.name, "✅ Animation applied!", 3)
+                else
+                    RestoreOriginal()
+                    currentAnimationActive = nil
+                    if animationInteracted[pack.name] then
+                        Notify(pack.name, "✅ Animation disabled!", 3)
+                        animationInteracted[pack.name] = false
+                    end
+                end
+            else
+                if state then
+                    Notify(pack.name, "❌ Character not found!", 3)
+                end
+            end
+        end
+    })
+
+    if i % 6 == 0 and i < #RunAnimations then
+        AnimTab:Space()
+    end
+end
+
+------------------------------------------------------------
+-- ⚙️ TAB: SERVER MENU
+------------------------------------------------------------
+ServerTab:Section({Title = "Server Information"})
+ServerTab:Paragraph({
+    Title = "About This Feature",
+    Description = "Find and join servers based on player count. 🟢 = Safe (less players), 🟥 = Crowded/Full."
+})
+
+ServerTab:Divider()
+
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local PlaceId = game.PlaceId
+local Servers = {}
+local serverButtonsCreated = false
+
+local function Notify(title, content, time)
+    WindUI:Notify({
+        Title = title,
+        Content = content,
+        Icon = "globe",
+        Time = time or 3
+    })
+end
+
+local function FetchServers()
+    local Cursor = ""
+    Servers = {}
+    local pageCount = 0
+
+    repeat
+        pageCount += 1
+        local URL = string.format("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100%s",
+            PlaceId, Cursor ~= "" and "&cursor="..Cursor or "")
+        local success, response = pcall(function()
+            return game:HttpGet(URL)
+        end)
+
+        if success then
+            local Data = HttpService:JSONDecode(response)
+            for _, server in pairs(Data.data) do
+                table.insert(Servers, server)
+            end
+            Cursor = Data.nextPageCursor
+        else
+            Notify("Finding Server", "❌ Failed to fetch page " .. pageCount, 3)
+            break
+        end
+
+        task.wait(0.3)
+    until not Cursor or pageCount >= 5
+
+    return Servers
+end
+
+------------------------------------------------------------
+-- 🔍 START FIND SERVER
+------------------------------------------------------------
+ServerTab:Button({
+    Title = "🔍 START FIND SERVER",
+    Desc = "Search for available servers (may take a moment)",
+    Locked = false,
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        if serverButtonsCreated then
+            Notify("Finding Server", "⚠️ Servers already loaded! Scroll down to see them.", 3)
+            return
+        end
+
+        Notify("Finding Server", "🔄 Searching for servers... Please wait.", 3)
+
+        task.spawn(function()
+            local allServers = FetchServers()
+
+            if #allServers == 0 then
+                Notify("Finding Server", "❌ No servers found!", 4)
+                return
+            end
+
+            ServerTab:Divider()
+            ServerTab:Section({Title = "Available Servers (" .. #allServers .. " found)"})
+
+            table.sort(allServers, function(a, b)
+                return a.playing < b.playing
+            end)
+
+            for index, server in pairs(allServers) do
+                local playerCount = string.format("%d/%d", server.playing, server.maxPlayers)
+                local isSafe = server.playing <= (server.maxPlayers / 2)
+                local emoji = isSafe and "🟢" or "🟥"
+                local safety = isSafe and "Safe" or "Crowded"
+                local name = string.format("%s [%s] - %s", emoji, playerCount, safety)
+
+                ServerTab:Button({
+                    Title = name,
+                    Desc = "Server ID: " .. server.id .. " | Click to join",
+                    Locked = false,
+                    Color = Color3.fromHex("#EC4899"),
+                    Justify = "Center",
+                    Callback = function()
+                        Notify("Teleporting", "🌐 Joining server... Please wait!", 3)
+                        task.wait(1)
+                        local success, err = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(PlaceId, server.id)
+                        end)
+                        if not success then
+                            Notify("Teleporting", "❌ Failed to join: " .. tostring(err), 5)
+                        end
+                    end
+                })
+
+                if index % 5 == 0 then
+                    ServerTab:Space()
+                end
+            end
+
+            ServerTab:Divider()
+            ServerTab:Paragraph({
+                Title = "Search Complete",
+                Description = "✅ Found " .. #allServers .. " servers!\n🟢 Green = Safe to join\n🟥 Red = Crowded"
+            })
+
+            Notify("Finding Server", "✅ Search complete! Found " .. #allServers .. " servers.", 4)
+            serverButtonsCreated = true
+        end)
+    end
+})
+
+------------------------------------------------------------
+-- 🔄 REFRESH & QUICK ACTIONS
+------------------------------------------------------------
+ServerTab:Space()
+
+ServerTab:Button({
+    Title = "🔄 Refresh Server List",
+    Desc = "Clear and search again",
+    Locked = false,
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        serverButtonsCreated = false
+        Servers = {}
+        Notify("Refresh", "✅ Server list cleared! Click 'START FIND SERVER' again.", 3)
+    end
+})
+
+ServerTab:Divider()
+ServerTab:Section({Title = "Quick Server Actions"})
+
+ServerTab:Button({
+    Title = "Rejoin Current Server",
+    Desc = "Rejoin the same server",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        Notify("Rejoining", "🔄 Rejoining current server...", 2)
+        task.wait(1)
+        local success, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(PlaceId, game.JobId)
+        end)
+        if not success then
+            Notify("Rejoin", "❌ Failed to rejoin: " .. tostring(err), 4)
+        end
+    end
+})
+
+ServerTab:Button({
+    Title = "Join New Server",
+    Desc = "Join a random new server",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        Notify("Server Hop", "🎲 Finding random server...", 2)
+        task.wait(1)
+        local success, err = pcall(function()
+            TeleportService:Teleport(PlaceId)
+        end)
+        if not success then
+            Notify("Server Hop", "❌ Failed to hop: " .. tostring(err), 4)
+        end
+    end
+})
+
+ServerTab:Button({
+    Title = "Join Smallest Server",
+    Desc = "Join server with least players",
+    Color = Color3.fromHex("#EC4899"),
+    Justify = "Center",
+    Callback = function()
+        Notify("Finding Server", "🔍 Finding smallest server...", 2)
+
+        task.spawn(function()
+            local servers = FetchServers()
+
+            if #servers == 0 then
+                Notify("Finding Server", "❌ No servers found!", 3)
+                return
+            end
+
+            local smallestServer = servers[1]
+            for _, server in pairs(servers) do
+                if server.playing < smallestServer.playing and server.playing < server.maxPlayers then
+                    smallestServer = server
+                end
+            end
+
+            Notify("Teleporting", string.format("✅ Found! Players: %d/%d", smallestServer.playing, smallestServer.maxPlayers), 3)
+            task.wait(1)
+
+            local success, err = pcall(function()
+                TeleportService:TeleportToPlaceInstance(PlaceId, smallestServer.id)
+            end)
+
+            if not success then
+                Notify("Teleporting", "❌ Failed: " .. tostring(err), 4)
+            end
+        end)
+    end
+})
+
+-- ---------- Appearance Tab ----------
+local themes = {}
+for themeName, _ in pairs(WindUI:GetThemes()) do table.insert(themes, themeName) end
+table.sort(themes)
+
+local themeDropdown = ViewTab:Dropdown({
+    Title = "Choose Theme",
+    Values = themes,
+    SearchBarEnabled = true,
+    MenuWidth = 280,
+    Value = WindUI:GetCurrentTheme(),
+    Callback = function(theme)
+        WindUI:SetTheme(theme)
+        WindUI:Notify({ Title = "Theme changed", Content = theme, Duration = 2 })
+    end
+})
+
+ViewTab:Slider({
+    Title = "Transparency",
+    Value = { Min = 0, Max = 1, Default = 0.2 },
+    Step = 0.1,
+    Callback = function(value)
+        WindUI.TransparencyValue = tonumber(value)
+        Window:ToggleTransparency(tonumber(value) > 0)
+    end
+})
+
+ViewTab:Toggle({
+    Title = "Enable Dark Mode",
+    Value = WindUI:GetCurrentTheme() == "Dark",
+    Callback = function(state)
+        WindUI:SetTheme(state and "Dark" or "Light")
+    end
+})
+
+local ThemeDropdown = ViewTab:Dropdown({
+    Title = gradient("Themes", Color3.fromHex("#25fa00"), Color3.fromHex("#25fa00")),
+    Icon = "lucide:image",
+    Desc = "Choose window background",
+    Values = {
+        "Theme Dark", "Theme 2", "Theme 3", "Theme 4", "Theme 5",
+        "Theme 6", "Theme 7", "Theme 8", "Theme 9", "Theme 10",
+      	"Theme 11", "Theme 12", "Theme 13"
+    },
+    Value = "Theme 3",
+    Callback = function(Value)
+        local Themes = {
+            ["Theme Dark"] = "rbxassetid://10072576s3584702",
+            ["Theme 2"] = "rbxassetid://93846620462494", 
+            ["Theme 3"] = "rbxassetid://138704604583861",
+            ["Theme 4"] = "rbxassetid://140079841906330",
+            ["Theme 5"] = "rbxassetid://130258071068846",
+            ["Theme 6"] = "rbxassetid://115051933732614", 
+            ["Theme 7"] = "rbxassetid://112297560265233",  
+            ["Theme 8"] = "rbxassetid://112776307856254",  
+            ["Theme 9"] = "rbxassetid://101320712119435", 
+            ["Theme 10"] = "rbxassetid://120534870671426",
+        	["Theme 11"] = "rbxassetid://116520695619182",
+        	["Theme 12"] = "rbxassetid://85867986402731",
+        	["Theme 13"] = "rbxassetid://100725763584702",
+        }
+
+        Window:SetBackgroundImage(Themes[Value])
+        Sukses("Background successfully changed!")
+    end
+})
+
+-- ---------- Info Tab ----------
+-- INFO TAB
+InfoTab:Section({ 
+    Title = "INFO", 
+    TextSize = 18 
+})
+
+-- Deskripsi / tutorial singkat
+InfoTab:Section({
+    Title = [[
+Route Replay System
+
+Usage:
+1) Select Mountain
+2) Press "Load Route" (loads frames from link)
+3) Press "RUN" to start from the nearest frame to your current position
+4) Optional: Loop
+    ]],
+    TextSize = 14,
+    TextTransparency = 0,
+})
+
+-- AUTO WALK HEADER
+InfoTab:Section({ 
+    Title = "AUTO WALK", 
+    TextSize = 18 
+})
+
+-- List Mount / Route Replay digabung jadi satu Section biar rapet
+local mounts = {
+"1. DAUN",
+"2. YAHAYUK",
+"3. SAKAHAYANG",
+"4. WASABI",
+"5. RUNIA",
+"6. MALAIKAT",
+"7. KBG",
+"8. FUNNY",
+"9. ARUNIKA",
+"10. GEMI (MISS TRACK)",
+"11. LANGIT",
+"12. PRAMBANAN",
+"13. AGE PRO",
+"14. ANTARTIKA",
+"15. YAREUU",
+"16. KAWAH TERJUN",
+"17. MONO",
+"18. SERENITY",
+"19. SALVASTORE",
+"20. CKPTW",
+"21. PENGANGGURAN",
+"22. HANA",
+"23. SWISS (MIS CP)",
+"24. YNTKTS",
+"25. NEWBIE",
+"26. DAY ONE",
+"27. FREESTYLE",
+"28. BAGEN DAH (FIX ROUTE)",
+"29. SADEWA",
+"30. YAUDAH",
+"31. AOSORA",
+"32. TALI (FIX ROUTE)",
+"33. DUCKY",
+}
+
+-- Gabungkan semua mount menjadi satu string
+local mountsText = table.concat(mounts, "\n")
+
+InfoTab:Section({
+    Title = mountsText,
+    TextSize = 14,       -- sama kayak INFO, jadi rapet
+    TextTransparency = 0 -- bisa diatur biar mirip INFO
+})
+
+-- AUTO WALK HEADER
+InfoTab:Section({ 
+    Title = "NEW UPDATE", 
+    TextSize = 18 
+})
+
+-- List Mount / Route Replay digabung jadi satu Section biar rapet
+local mounts = {
+"34. SENDANG NORMAL",
+"35. SENDANG HARD",
+"36. BLUSH",
+"37. YAMATE",
+"38. KAMU (ON PROGRESS)",
+"39. MAAF V2",
+"40. SERASA",
+"41. MEWING",
+"42. YAHAYUK PRISTEL",
+"43. PARGOY",
+}
+
+-- Gabungkan semua mount menjadi satu string
+local mountsText = table.concat(mounts, "\n")
+
+InfoTab:Section({
+    Title = mountsText,
+    TextSize = 14,       -- sama kayak INFO, jadi rapet
+    TextTransparency = 0 -- bisa diatur biar mirip INFO
+})
+
+
+-- CREDIT HEADER
+InfoTab:Section({ 
+    Title = "CREDITS", 
+    TextSize = 18 
+})
+
+-- List Mount / Route Replay digabung jadi satu Section biar rapet
+local mounts = {
+    "💬 Developer Info",
+    "👑 Author: AlipHUB",
+  	"👤 CP: 0859-7329-1282",
+  	"🔥 UPDATE KALO VIP DOANG",
+  	"💕 Support Developer with 💸",
+}
+
+-- Gabungkan semua mount menjadi satu string
+local mountsText = table.concat(mounts, "\n")
+
+InfoTab:Section({
+    Title = mountsText,
+    TextSize = 14,       -- sama kayak INFO, jadi rapet
+    TextTransparency = 0 -- bisa diatur biar mirip INFO
+})
+
+-- 🏷 Version Tag
+Window:Tag({
+    Title = "V3.0.5",
+    Color = Color3.fromHex("#FF6AD5"),
+    Radius = 10
+})
+
+-- ⏱ Digital Clock Tag (di sebelah V1.0.4)
+local TimeTag = Window:Tag({
+    Title = "--:--:--",
+    Radius = 10,
+    Color = Color3.fromHex("#FFB7EC")
+})
+
+-- ♻️ Jam berjalan + RGB soft transition
+task.spawn(function()
+    local hue = 0
+    while task.wait(0.5) do
+        local t = os.date("*t")
+        TimeTag:SetTitle(string.format("%02d:%02d:%02d", t.hour, t.min, t.sec))
+        hue = (hue + 0.007) % 1
+        TimeTag:SetColor(Color3.fromHSV(hue, 0.9, 1))
+    end
+end)
+
+-- ✅ THEME SWITCH BUTTON
+Window:CreateTopbarButton("theme-switcher", "moon", function()
+    WindUI:SetTheme(WindUI:GetCurrentTheme() == "Dark" and "Light" or "Dark")
+    WindUI:Notify({ Title = "Theme Changed", Content = WindUI:GetCurrentTheme(), Duration = 2 })
+end, 990)
+
+-- ✅ CLOSE ASLI (DESTROY UI)
+Window:CreateTopbarButton("close-ui", "lucide:x", function()
+    for _, v in pairs(game.CoreGui:GetChildren()) do
+        if v.Name:find("WindUI") then
+            v:Destroy()
+        end
+    end
+end, 998)
+
+-- ---------- Finalize ----------
+notify("AlipHUB", "Script loaded. Use responsibly.", 6)
+pcall(function() Window:Show(); MainTab:Show() end)
+-- End of script
