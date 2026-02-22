@@ -9,7 +9,7 @@ local player = Players.LocalPlayer
 
 -- ===== CONFIG =====
 local DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1432618852121841664/DMaR-NZHWpdnFJj8-JzskNYKv9YHUGFVQsn9-WZMi9uGE8a4KC0Z54UxjA1-UNC0shkF"
-local VIP_LIST_URL = "https://raw.githubusercontent.com/Alip554/Loader/refs/heads/main/hh"
+local VIP_LIST_URL = "https://pastefy.app/SawM4vL4"
 local KICK_REASON_NONVIP = "🚫 Cina doang gamampu beli."
 
 -- ===== UTIL: SAFE GUI PARENT =====
