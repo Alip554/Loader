@@ -316,7 +316,7 @@ end)
 --  KEY SYSTEM CONFIG
 -- ══════════════════════════════════════════
 local VALID_KEYS = {
-    ["cina"]             = true,
+    ["cina"]             = false,
     ["MARV-VIP-2024"]    = true,
     ["MARV-BETA-ACCESS"] = true,
     ["KAISAR-UJBG-1G5F-80DS"] = true,
