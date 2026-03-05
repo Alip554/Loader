@@ -316,7 +316,7 @@ end)
 --  KEY SYSTEM CONFIG
 -- ══════════════════════════════════════════
 local VALID_KEYS = {
-    ["cina"]             = false,
+    ["cina"]             = true,
     ["MARV-VIP-2024"]    = true,
     ["MARV-BETA-ACCESS"] = true,
     ["KAISAR-UJBG-1G5F-80DS"] = true,
@@ -855,7 +855,7 @@ end
 -- ══════════════════════════════════════════
 
 local Window = WindUI:CreateWindow({
-    Title  = "KaisarHub | Premium",
+    Title  = isVerified and "KaisarHub | Premium" or "KaisarHub | Locked",
     Author = "Cina Kontol",
     Folder = "kaisarhub",
     Icon   = "sword",
@@ -1788,6 +1788,7 @@ AuthTab:Button({
         elseif VALID_KEYS[trimmed] then
             isVerified = true
             saveKey(trimmed)
+            pcall(function() Window:SetTitle("KaisarHub | Premium") end)
             createAutoWalkTab()
             createRecordTab()
             setupAnimTab(Window, WindUI)
